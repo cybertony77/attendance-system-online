@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useMemo } from "react";
-import { Html5QrcodeScanner } from "html5-qrcode";
+import { Html5QrcodeScanner, Html5Qrcode } from "html5-qrcode";
 import { useRouter } from "next/router";
 import { AVAILABLE_CENTERS } from "../../constants/centers";
 import Title from "../../components/Title";
@@ -31,6 +31,7 @@ export default function QR() {
   const [error, setError] = useState("");
   const [attendSuccess, setAttendSuccess] = useState(false);
   const [scanner, setScanner] = useState(null);
+  const [scannerState, setScannerState] = useState('idle'); // 'idle', 'scanning', 'paused'
   const [attendanceCenter, setAttendanceCenter] = useState("");
   const [selectedWeek, setSelectedWeek] = useState("");
   const [quizDegreeInput, setQuizDegreeInput] = useState("");
@@ -157,59 +158,229 @@ export default function QR() {
     
   }, [studentId, student]);
 
-  useEffect(() => {
-    const qrScanner = new Html5QrcodeScanner(
-      "qr-reader",
-      { 
-        fps: 10, 
-        qrbox: { width: 300, height: 300 },
-        aspectRatio: 1.0
-      },
-      false
-    );
+  // Open camera for scanning
+  const openCamera = () => {
+    setError("");
+    setScannerState('scanning');
+    
+    // Clear container
+    const qrReaderDiv = document.getElementById("qr-reader");
+    if (qrReaderDiv) {
+      qrReaderDiv.innerHTML = "";
+    }
 
-    qrScanner.render((decodedText) => {
-      if (decodedText && decodedText !== studentId) {
-        // Clear previous student data when new QR is scanned
-        setError("");
+    setTimeout(() => {
+      const qrScanner = new Html5QrcodeScanner(
+        "qr-reader",
+        { 
+          fps: 10, 
+          qrbox: { width: 300, height: 300 },
+          aspectRatio: 1.0,
+          videoConstraints: {
+            facingMode: "environment" // Force back camera
+          },
+          showTorchButtonIfSupported: false,
+          showZoomSliderIfSupported: false,
+          defaultZoomValueIfSupported: 1,
+          disableFlip: true
+        },
+        /* verbose= */ false
+      );
+
+      qrScanner.render((decodedText) => {
+        if (decodedText && decodedText !== studentId) {
+          setError("");
+          setAttendSuccess(false);
+          
+          const extractedId = extractStudentId(decodedText);
+          if (extractedId) {
+            setStudentId(extractedId);
+            setSearchId(extractedId);
+            // Pause scanner after successful scan
+            setScannerState('paused');
+            // Clear scanner and container immediately
+            setTimeout(() => {
+              try {
+                qrScanner.clear();
+                const qrReaderDiv = document.getElementById("qr-reader");
+                if (qrReaderDiv) {
+                  qrReaderDiv.innerHTML = "";
+                }
+              } catch (e) {
+                console.warn("Error clearing scanner:", e);
+              }
+            }, 100);
+          } else {
+            setError('Invalid QR code: not a valid student ID');
+          }
+        }
+      }, (errorMessage) => {
+        // Ignore most errors to avoid spam
+        if (errorMessage && typeof errorMessage === 'string') {
+          if (errorMessage.includes("NotAllowedError")) {
+            setError("Camera permission denied. Please allow camera access.");
+            setScannerState('idle');
+            // Clear scanner on error
+            setTimeout(() => {
+              try {
+                qrScanner.clear();
+                const qrReaderDiv = document.getElementById("qr-reader");
+                if (qrReaderDiv) {
+                  qrReaderDiv.innerHTML = "";
+                }
+              } catch (e) {
+                console.warn("Error clearing scanner:", e);
+              }
+            }, 100);
+          } else if (errorMessage.includes("NotReadableError") || errorMessage.includes("Could not start video source")) {
+            setError("Camera not available. Please check camera permissions.");
+            setScannerState('idle');
+            // Clear scanner on error
+            setTimeout(() => {
+              try {
+                qrScanner.clear();
+                const qrReaderDiv = document.getElementById("qr-reader");
+                if (qrReaderDiv) {
+                  qrReaderDiv.innerHTML = "";
+                }
+              } catch (e) {
+                console.warn("Error clearing scanner:", e);
+              }
+            }, 100);
+          }
+        }
+      });
+
+      setScanner(qrScanner);
+      
+      // Additional cleanup to remove default controls after render
+      setTimeout(() => {
+        const elementsToHide = [
+          '#qr-reader__dashboard_section',
+          '#qr-reader__dashboard_section_csr',
+          '#qr-reader__dashboard_section_swaplink',
+          '#qr-reader__header_message',
+          '#qr-reader__camera_selection',
+          '#qr-reader select',
+          '#qr-reader button:not(.stop-scanning-btn)',
+          '#qr-reader span'
+        ];
+        
+        elementsToHide.forEach(selector => {
+          const elements = document.querySelectorAll(selector);
+          elements.forEach(el => {
+            if (el && !el.classList.contains('stop-scanning-btn')) {
+              el.style.display = 'none';
+              el.style.visibility = 'hidden';
+              el.style.opacity = '0';
+              el.style.height = '0';
+              el.style.overflow = 'hidden';
+            }
+          });
+        });
+        
+        // Also try to remove by text content
+        const qrReaderDiv = document.getElementById('qr-reader');
+        if (qrReaderDiv) {
+          const allElements = qrReaderDiv.querySelectorAll('*');
+          allElements.forEach(el => {
+            if (el.textContent && 
+                (el.textContent.includes('Select Camera') || 
+                 el.textContent.includes('Stop Scanning') ||
+                 el.textContent.includes('camera'))) {
+              if (!el.classList.contains('stop-scanning-btn')) {
+                el.style.display = 'none';
+              }
+            }
+          });
+        }
+      }, 500);
+    }, 100);
+  };
+
+  // Handle file upload for QR code
+  const handleFileUpload = async (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      setError("");
+      
+      try {
+        // Create a temporary div for scanning
+        const tempDiv = document.createElement('div');
+        tempDiv.id = 'temp-qr-scanner';
+        tempDiv.style.display = 'none';
+        document.body.appendChild(tempDiv);
+        
+        const html5QrCode = new Html5Qrcode("temp-qr-scanner");
+        
+        const decodedText = await html5QrCode.scanFile(file, true);
+        
+        console.log("QR Code from file:", decodedText);
         setAttendSuccess(false);
         
-        // Extract student ID from QR code (URL or number)
         const extractedId = extractStudentId(decodedText);
         if (extractedId) {
           setStudentId(extractedId);
-          setSearchId(extractedId); // Trigger fetch for QR scanned student
+          setSearchId(extractedId);
+          setScannerState('paused');
         } else {
           setError('Invalid QR code: not a valid student ID');
         }
-      }
-    }, (errorMessage) => {
-      // Clear student data when QR scan fails
-      if (errorMessage && typeof errorMessage === 'string') {
-        setAttendSuccess(false);
         
-        if (errorMessage.includes("NotFoundException")) {
-          setError("QR code not readable. Please try again.");
-        } else if (errorMessage.includes("No MultiFormat Readers")) {
-          setError("QR code not readable. Please try again.");
-        } else {
-          setError("QR scan error. Please try again.");
+        // Cleanup
+        html5QrCode.clear();
+        document.body.removeChild(tempDiv);
+        
+      } catch (err) {
+        console.error("File scan error:", err);
+        setError('Could not read QR code from image. Please make sure the image contains a valid QR code.');
+        
+        // Cleanup on error
+        const tempDiv = document.getElementById('temp-qr-scanner');
+        if (tempDiv) {
+          document.body.removeChild(tempDiv);
         }
-      } else if (errorMessage) {
-        // Handle non-string error messages
-        setAttendSuccess(false);
-        setError("QR scan error. Please try again.");
       }
-    });
+    }
+    // Reset file input
+    event.target.value = '';
+  };
 
-    setScanner(qrScanner);
+  // Scan again
+  const scanAgain = () => {
+    // Clear any existing scanner
+    if (scanner) {
+      try {
+        scanner.clear();
+      } catch (e) {
+        console.warn("Error clearing scanner:", e);
+      }
+      setScanner(null);
+    }
+    
+    // Clear the container completely
+    const qrReaderDiv = document.getElementById("qr-reader");
+    if (qrReaderDiv) {
+      qrReaderDiv.innerHTML = "";
+    }
+    
+    // Reset to idle state
+    setScannerState('idle');
+    setError("");
+  };
 
+  // Cleanup on unmount
+  useEffect(() => {
     return () => {
-      if (qrScanner) {
-        qrScanner.clear();
+      if (scanner) {
+        try {
+          scanner.clear();
+        } catch (e) {
+          console.warn("Error clearing scanner on unmount:", e);
+        }
       }
     };
-  }, [studentId]);
+  }, [scanner]);
 
   // Auto-hide error after 6 seconds
   useEffect(() => {
@@ -506,6 +677,140 @@ export default function QR() {
         .qr-reader * {
           color: #000000 !important;
         }
+        /* Hide scanner controls when in paused state */
+        .qr-container:has(.qr-controls) .qr-reader {
+          display: none !important;
+        }
+        /* Hide all default scanner controls - more aggressive approach */
+        #qr-reader__dashboard_section,
+        #qr-reader__dashboard_section_csr,
+        #qr-reader__dashboard_section_swaplink,
+        #qr-reader__header_message,
+        #qr-reader__camera_selection,
+        #qr-reader__camera_permission_button,
+        #qr-reader__scan_type_change,
+        div[id*="qr-reader__dashboard"],
+        div[id*="qr-reader__header"],
+        span[id*="qr-reader__status"] {
+          display: none !important;
+          visibility: hidden !important;
+          opacity: 0 !important;
+          height: 0 !important;
+          overflow: hidden !important;
+        }
+        
+        /* Hide all selects, buttons, and spans inside qr-reader */
+        #qr-reader select,
+        #qr-reader button,
+        #qr-reader span,
+        #qr-reader div:not(#qr-reader__scan_region):not([id*="video"]) {
+          display: none !important;
+          visibility: hidden !important;
+        }
+        
+        /* Only show the scan region */
+        #qr-reader__scan_region {
+          margin-bottom: 0 !important;
+          margin-top: 0 !important;
+        }
+        
+        /* Hide any text content */
+        #qr-reader *:not(video):not(canvas) {
+          color: transparent !important;
+          font-size: 0 !important;
+        }
+        .scanning-container {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+        .scanning-controls {
+          display: flex;
+          justify-content: center;
+          padding: 0 20px;
+        }
+        .stop-scanning-btn {
+          background: linear-gradient(135deg, #dc3545 0%, #e74c3c 100%);
+          color: white;
+          box-shadow: 0 4px 16px rgba(220, 53, 69, 0.3);
+        }
+        .stop-scanning-btn:hover {
+          background: linear-gradient(135deg, #c82333 0%, #dc3545 100%);
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4);
+        }
+        .qr-controls {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          min-height: 300px;
+          background: #f8f9fa;
+          border-radius: 12px;
+          border: 2px dashed #dee2e6;
+          padding: 20px;
+          text-align: center;
+          gap: 16px;
+        }
+        .qr-buttons {
+          display: flex;
+          gap: 16px;
+          flex-wrap: wrap;
+          justify-content: center;
+        }
+        .qr-btn {
+          padding: 16px 32px;
+          border: none;
+          border-radius: 12px;
+          font-size: 1.1rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          min-width: 160px;
+          justify-content: center;
+        }
+        .camera-btn {
+          background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+          color: white;
+          box-shadow: 0 4px 16px rgba(40, 167, 69, 0.3);
+        }
+        .camera-btn:hover {
+          background: linear-gradient(135deg, #1e7e34 0%, #17a2b8 100%);
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+        }
+        .upload-btn {
+          background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+          color: white;
+          box-shadow: 0 4px 16px rgba(0, 123, 255, 0.3);
+        }
+        .upload-btn:hover {
+          background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
+        }
+        .scan-again-btn {
+          background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+          color: #212529;
+          box-shadow: 0 4px 16px rgba(255, 193, 7, 0.3);
+        }
+        .scan-again-btn:hover {
+          background: linear-gradient(135deg, #e0a800 0%, #d39e00 100%);
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(255, 193, 7, 0.4);
+        }
+        .qr-message {
+          color: #6c757d;
+          font-size: 1rem;
+          font-weight: 500;
+          margin-bottom: 8px;
+        }
+        .file-input {
+          display: none;
+        }
         .error-message {
           background: linear-gradient(135deg, #dc3545 0%, #e74c3c 100%);
           color: white;
@@ -698,6 +1003,32 @@ export default function QR() {
             flex-direction: column;
             gap: 12px;
           }
+          .qr-controls {
+            min-height: 250px;
+            padding: 16px;
+            gap: 12px;
+          }
+          .qr-buttons {
+            gap: 12px;
+          }
+          .qr-btn {
+            padding: 14px 28px;
+            font-size: 1rem;
+            min-width: 140px;
+          }
+          .qr-message {
+            font-size: 0.95rem;
+          }
+          .scanning-container {
+            gap: 12px;
+          }
+          .scanning-controls {
+            padding: 0 16px;
+          }
+          .stop-scanning-btn {
+            padding: 12px 24px;
+            font-size: 0.95rem;
+          }
           .fetch-btn {
             width: 100%;
             padding: 14px 20px;
@@ -723,6 +1054,36 @@ export default function QR() {
           .status-badge {
             font-size: 0.8rem;
             padding: 6px 12px;
+          }
+          .qr-controls {
+            min-height: 220px;
+            padding: 12px;
+            gap: 10px;
+          }
+          .qr-buttons {
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+          }
+          .qr-btn {
+            padding: 12px 24px;
+            font-size: 0.95rem;
+            min-width: auto;
+            width: 100%;
+          }
+          .qr-message {
+            font-size: 0.9rem;
+          }
+          .scanning-container {
+            gap: 10px;
+          }
+          .scanning-controls {
+            padding: 0 12px;
+          }
+          .stop-scanning-btn {
+            padding: 10px 20px;
+            font-size: 0.9rem;
+            width: 100%;
           }
         }
       `}</style>
@@ -753,7 +1114,52 @@ export default function QR() {
       </div>
 
       <div className="qr-container">
-        <div id="qr-reader" className="qr-reader"></div>
+        {scannerState === 'idle' && (
+          <div className="qr-controls">
+            <div className="qr-message">
+              📱 Choose how to scan QR code
+            </div>
+            <div className="qr-buttons">
+              <button className="qr-btn camera-btn" onClick={openCamera}>
+                📷 Open Camera
+              </button>
+              <label className="qr-btn upload-btn" htmlFor="qr-file-input">
+                📁 Upload QR Code
+              </label>
+              <input
+                id="qr-file-input"
+                type="file"
+                accept="image/*"
+                onChange={handleFileUpload}
+                className="file-input"
+              />
+            </div>
+          </div>
+        )}
+        
+        {scannerState === 'scanning' && (
+          <div className="scanning-container">
+            <div id="qr-reader" className="qr-reader"></div>
+            <div className="scanning-controls">
+              <button className="qr-btn stop-scanning-btn" onClick={scanAgain}>
+                ❌ Stop Scanning
+              </button>
+            </div>
+          </div>
+        )}
+        
+        {scannerState === 'paused' && (
+          <div className="qr-controls">
+            <div className="qr-message">
+              ✅ QR code scanned successfully
+            </div>
+            <div className="qr-buttons">
+              <button className="qr-btn scan-again-btn" onClick={scanAgain}>
+                🔄 Scan Again
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {student && (
@@ -893,7 +1299,7 @@ export default function QR() {
               style={{
                 width: '100%',
                 background: !(optimisticAttended !== null ? optimisticAttended : student.attended_the_session) 
-                  ? 'linear-gradient(135deg, #6c757d 0%, #495057 100%)' // Gray when not attended
+                  ? 'linear-gradient(135deg, rgb(46, 165, 101) 0%, rgb(41, 196, 88) 100%)' // Gray when not attended
                   : (optimisticHwDone !== null ? optimisticHwDone : student.hwDone) 
                     ? 'linear-gradient(135deg, #dc3545 0%, #e74c3c 100%)' 
                     : 'linear-gradient(135deg, #28a745 0%, #20c997 100%)',
@@ -923,7 +1329,7 @@ export default function QR() {
               style={{
                 width: '100%',
                 background: !(optimisticAttended !== null ? optimisticAttended : student.attended_the_session) 
-                  ? 'linear-gradient(135deg, #6c757d 0%, #495057 100%)' // Gray when not attended
+                  ? 'linear-gradient(135deg, rgb(46, 165, 101) 0%, rgb(41, 196, 88) 100%)' // Gray when not attended
                   : (optimisticPaidSession !== null ? optimisticPaidSession : student.paidSession) 
                     ? 'linear-gradient(135deg, #dc3545 0%, #e74c3c 100%)' 
                     : 'linear-gradient(135deg, #28a745 0%, #20c997 100%)',
