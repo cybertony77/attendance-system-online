@@ -115,22 +115,22 @@ export default function StudentInfo() {
 
   // Helper function to get attendance status for a week
   const getWeekAttendance = (weekNumber) => {
-    if (!student || !student.weeks) return { attended: false, hwDone: false, paidSession: false, quizDegree: null };
+    if (!student || !student.weeks) return { attended: false, hwDone: false, paidSession: false, quizDegree: null, message_state: false };
     
     const weekData = student.weeks.find(w => w.week === weekNumber);
-    if (!weekData) return { attended: false, hwDone: false, paidSession: false, quizDegree: null };
+    if (!weekData) return { attended: false, hwDone: false, paidSession: false, quizDegree: null, message_state: false };
     
     return {
       attended: weekData.attended || false,
       hwDone: weekData.hwDone || false,
       paidSession: weekData.paidSession || false,
-      quizDegree: weekData.quizDegree || null
+      quizDegree: weekData.quizDegree || null,
+      message_state: weekData.message_state || false
     };
   };
 
   return (
     <div style={{ 
-      minHeight: "100vh",
       padding: "20px 5px 20px 5px"
     }}>
       <div ref={containerRef} style={{ maxWidth: 600, margin: "40px auto", padding: 24 }}>
@@ -323,10 +323,12 @@ export default function StudentInfo() {
                 <div className="detail-label">Full Name</div>
                 <div className="detail-value">{student.name}</div>
               </div>
-              <div className="detail-item">
-                <div className="detail-label">Age</div>
-                <div className="detail-value">{student.age || 'N/A'}</div>
-              </div>
+              {student.age && (
+                <div className="detail-item">
+                  <div className="detail-label">Age</div>
+                  <div className="detail-value">{student.age}</div>
+                </div>
+              )}
               <div className="detail-item">
                 <div className="detail-label">Grade</div>
                 <div className="detail-value">{student.grade}</div>
@@ -351,7 +353,7 @@ export default function StudentInfo() {
             
             <div className="weeks-title">Attendance Records - All Weeks</div>
             <ScrollArea h={400} type="hover" className={styles.scrolled}>
-              <Table striped highlightOnHover withTableBorder withColumnBorders style={{ minWidth: '800px' }}>
+              <Table striped highlightOnHover withTableBorder withColumnBorders style={{ minWidth: '950px' }}>
                 <Table.Thead style={{ position: 'sticky', top: 0, backgroundColor: '#f8f9fa', zIndex: 10 }}>
                   <Table.Tr>
                     <Table.Th style={{ width: '120px', minWidth: '120px', textAlign: 'center' }}>Week</Table.Th>
@@ -359,6 +361,7 @@ export default function StudentInfo() {
                     <Table.Th style={{ width: '120px', minWidth: '120px', textAlign: 'center' }}>Homework</Table.Th>
                     <Table.Th style={{ width: '120px', minWidth: '120px', textAlign: 'center' }}>Payment</Table.Th>
                     <Table.Th style={{ width: '120px', minWidth: '120px', textAlign: 'center' }}>Quiz Degree</Table.Th>
+                    <Table.Th style={{ width: '130px', minWidth: '130px', textAlign: 'center' }}>Message Status</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
@@ -405,6 +408,15 @@ export default function StudentInfo() {
                             color: weekData.quizDegree !== null ? '#1FA8DC' : '#6c757d'
                           }}>
                             {weekData.quizDegree !== null ? weekData.quizDegree : '0/0'}
+                          </span>
+                        </Table.Td>
+                        <Table.Td style={{ width: '130px', minWidth: '130px', textAlign: 'center' }}>
+                          <span style={{ 
+                            color: weekData.message_state ? '#28a745' : '#dc3545',
+                            fontWeight: 'bold',
+                            fontSize: '1rem'
+                          }}>
+                            {weekData.message_state ? '✅ Sent' : '❌ Not Sent'}
                           </span>
                         </Table.Td>
                       </Table.Tr>

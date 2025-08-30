@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import bcrypt from "bcryptjs";
 import Title from "../../components/Title";
 import { useProfile, useUpdateProfile } from '../../lib/api/auth';
 
@@ -117,8 +116,8 @@ export default function EditMyProfile() {
     
     // Handle password separately - only include if it was changed and not empty
     if (changedFields.password && changedFields.password.trim() !== "") {
-      // Hash the password before sending
-      submitForm.password = await bcrypt.hash(changedFields.password, 10);
+      // Send the raw password - backend will hash it
+      submitForm.password = changedFields.password;
     } else if (changedFields.password !== undefined) {
       // If password field was cleared, don't send it
       delete submitForm.password;
@@ -266,7 +265,7 @@ export default function EditMyProfile() {
               />
             </div>
             <div className="form-group">
-              <label>Username (ID)</label>
+              <label>Username</label>
               <input
                 className="form-input"
                 name="id"

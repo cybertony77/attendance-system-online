@@ -105,12 +105,17 @@ export default function Login() {
 
   return (
     <div style={{ 
-      minHeight: "100vh", 
-      display: "flex",
-      flexDirection: "column",
-      minHeight: "100vh"
+      height: '100vh',
+      width: '100vw',
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      display: 'flex', 
+      alignItems: 'center', 
+      justifyContent: 'center', 
+      padding: '20px 5px 20px 5px',
+      background: 'linear-gradient(380deg, #1FA8DC 0%, #FEB954 100%)'
     }}>
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px 5px 20px 5px' }}>
         <style jsx>{`
           .login-container {
             background: rgba(255, 255, 255, 0.95);
@@ -423,7 +428,6 @@ export default function Login() {
             <p>Copyright &copy; {new Date().getFullYear()} - TopPhysics</p>
           </div>
         </div>
-      </div>
     </div>
   );
 }

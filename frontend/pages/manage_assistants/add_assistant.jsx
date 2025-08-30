@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import bcrypt from "bcryptjs";
 import Title from "../../components/Title";
+import RoleSelect from "../../components/RoleSelect";
 import { useCreateAssistant, useCheckUsername } from '../../lib/api/assistants';
 
 function decodeJWT(token) {
@@ -240,7 +241,7 @@ export default function AddAssistant() {
               <input
                 className={`form-input ${!usernameCheck.isLoading && usernameCheck.data && usernameCheck.data.exists ? 'error-border' : ''}`}
                 name="id"
-                placeholder="Enter assistant ID"
+                placeholder="Enter assistant username"
                 value={form.id}
                 onChange={handleChange}
                 required
@@ -341,16 +342,11 @@ export default function AddAssistant() {
             </div>
             <div className="form-group">
               <label>Role <span style={{color: 'red'}}>*</span></label>
-              <select
-                className="form-input"
-                name="role"
-                value={form.role}
-                onChange={handleChange}
-                required
-              >
-                <option value="assistant">assistant</option>
-                <option value="admin">admin</option>
-              </select>
+              <RoleSelect 
+                selectedRole={form.role}
+                onRoleChange={(role) => setForm({ ...form, role })}
+                required={true}
+              />
             </div>
             <button 
               type="submit" 

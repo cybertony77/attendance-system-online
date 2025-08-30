@@ -77,7 +77,7 @@ export default function DeleteStudent() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", padding: "20px 5px 20px 5px" }}>
+    <div style={{ padding: "20px 5px 20px 5px" }}>
       <div style={{ maxWidth: 600, margin: "40px auto", padding: 24 }}>
         <style jsx>{`
           .title {
@@ -358,7 +358,7 @@ export default function DeleteStudent() {
               <div className="student-info">
                 <h3>Student Found:</h3>
                 <p><strong>Name:</strong> {student.name}</p>
-                <p><strong>Age:</strong> {student.age || 'N/A'}</p>
+                {student.age && <p><strong>Age:</strong> {student.age}</p>}
                 <p><strong>Grade:</strong> {student.grade}</p>
                 <p><strong>School:</strong> {student.school}</p>
                 <p><strong>Phone:</strong> {student.phone}</p>

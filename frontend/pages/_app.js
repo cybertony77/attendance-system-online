@@ -417,7 +417,11 @@ export default function App({ Component, pageProps }) {
     <QueryClientProvider client={queryClient}>
       <ErrorBoundary>
         <MantineProvider>
-          <div style={{ position: 'relative', minHeight: '100vh' }}>
+          <div className="page-container" style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            minHeight: '100vh' 
+          }}>
             <Header />
             
             {/* Session Expiry Warning */}
@@ -438,7 +442,9 @@ export default function App({ Component, pageProps }) {
               </div>
             )}
             
-            <Component {...pageProps} />
+            <div className="content" style={{ flex: 1 }}>
+              <Component {...pageProps} />
+            </div>
             <Footer />
           </div>
           <ReactQueryDevtools initialIsOpen={false} />

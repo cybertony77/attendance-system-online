@@ -19,6 +19,7 @@ export default function DeleteAssistant() {
   const [deleted, setDeleted] = useState(false);
   const [error, setError] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null); // Store current user info
 
   // React Query hooks
   const { data: assistant, isLoading: assistantLoading, error: assistantError } = useAssistant(searchId, { enabled: !!searchId });
@@ -37,7 +38,10 @@ export default function DeleteAssistant() {
       console.log("🚫 Access denied: User is not admin, redirecting to dashboard");
       // Use window.location to avoid router conflicts
       window.location.href = "/dashboard";
+      return;
     }
+    // Store current user info for comparison
+    setCurrentUser(decoded);
   }, []);
 
   useEffect(() => {
@@ -66,6 +70,12 @@ export default function DeleteAssistant() {
       return;
     }
     
+    // Check if trying to delete themselves
+    if (currentUser && assistantId === currentUser.assistant_id) {
+      setError("⚠️ You are deleting yourself (" + currentUser.assistant_id + "). This action cannot be done. Please contact the developer (Tony Joseph) if you insist to delete yourself.");
+      return;
+    }
+    
     setError("");
     
     // Set the search ID to trigger the fetch
@@ -78,6 +88,12 @@ export default function DeleteAssistant() {
     // Check if trying to delete "tony" - prevent this
     if (assistant.name && assistant.name.toLowerCase() === "tony") {
       setError("You can't Delete tony");
+      return;
+    }
+    
+    // Double-check if trying to delete themselves
+    if (currentUser && assistant.id === currentUser.assistant_id) {
+      setError("⚠️ You are deleting yourself (" + currentUser.assistant_id + "). This action cannot be done. Please contact the developer (Tony Joseph) if you insist to delete yourself.");
       return;
     }
     
@@ -101,7 +117,7 @@ export default function DeleteAssistant() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", padding: "20px 5px 20px 5px" }}>
+    <div style={{ padding: "20px 5px 20px 5px" }}>
       <div style={{ maxWidth: 600, margin: "40px auto", padding: 24 }}>
                  <Title backText="Back to Manage Assistants" href="/manage_assistants" style={{ '--button-width': '180px' }}>Delete Assistant</Title>
         <style jsx>{`
@@ -379,21 +395,32 @@ export default function DeleteAssistant() {
               </form>
               
             {error && (
-              <div className="error-message">{error}</div>
+              <div className="error-message">
+                {error.includes("You are deleting yourself") ? (
+                  <>
+                    {error}
+                    <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
+                      <ContactDeveloper />
+                    </div>
+                  </>
+                ) : (
+                  error
+                )}
+              </div>
             )}
             </div>
             {assistant && (
               <div className="assistant-info">
                 <h3>Assistant Found:</h3>
-                <p><strong>ID:</strong> {assistant.id}</p>
+                <p><strong>Username:</strong> {assistant.id}</p>
                 <p><strong>Name:</strong> {assistant.name}</p>
                 <p><strong>Phone:</strong> {assistant.phone}</p>
                 <p><strong>Role:</strong> {assistant.role}</p>
                 <div style={{ marginTop: "20px" }}>
-                  {assistant.id === 'admin' ? (
+                  {(currentUser && assistant.id === currentUser.assistant_id) ? (
                     <>
                       <p style={{ color: "#dc3545", fontWeight: "bold", marginBottom: "16px" }}>
-                        ⚠️ You are deleting yourself (admin). This action cannot be done. Please contact the developer (Tony Joseph) if you insist to delete yourself.
+                        ⚠️ You are deleting yourself ({currentUser.assistant_id}). This action cannot be done. Please contact the developer (Tony Joseph) if you insist to delete yourself.
                       </p>
                       <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
                         <ContactDeveloper />
@@ -416,7 +443,7 @@ export default function DeleteAssistant() {
                 </div>
               </div>
             )}
-            {showConfirm && assistant && assistant.id !== 'admin' && (
+            {showConfirm && assistant && !(currentUser && assistant.id === currentUser.assistant_id) && (
               <div className="confirm-modal">
                 <div className="confirm-content">
                   <h3>Confirm Delete</h3>

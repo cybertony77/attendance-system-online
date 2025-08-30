@@ -109,7 +109,8 @@ export default function AddStudent() {
     
     // Map parentsPhone to parents_phone for backend - preserve leading zeros by storing as strings
     const payload = { ...form, parents_phone: parentPhone };
-    payload.age = Number(payload.age);
+    // Handle age - set to null if empty, otherwise convert to number
+    payload.age = form.age && form.age.trim() !== '' ? Number(form.age) : null;
     payload.phone = studentPhone; // Keep as string to preserve leading zeros exactly
     let gradeClean = payload.grade.toLowerCase().replace(/\./g, '');
     payload.grade = gradeClean;
@@ -156,7 +157,7 @@ export default function AddStudent() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", padding: "20px 5px 20px 5px" }}>
+    <div style={{ padding: "20px 5px 20px 5px" }}>
       <div ref={containerRef} style={{ maxWidth: 600, margin: "40px auto", padding: 24 }}>
         <style jsx>{`
           .title {
@@ -258,17 +259,16 @@ export default function AddStudent() {
               />
             </div>
             <div className="form-group">
-              <label>Age <span style={{color: 'red'}}>*</span></label>
+              <label>Age (Optional)</label>
               <input
                 className="form-input"
                 name="age"
                 type="number"
                 min="10"
                 max="30"
-                placeholder="Enter student's age"
+                placeholder="Enter student's age (optional)"
                 value={form.age}
                 onChange={handleChange}
-                required
               />
             </div>
             <div className="form-group">

@@ -105,7 +105,7 @@ export default function Dashboard() {
         @media (max-width: 480px) {
           .main-container {
             max-width: 600px;
-            margin: 150px auto !important;
+            margin: 20px auto !important;
             text-align: center;
           }
           .dashboard-btn {

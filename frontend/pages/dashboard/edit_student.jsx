@@ -133,12 +133,21 @@ export default function EditStudent() {
     
     const changes = {};
     Object.keys(formData).forEach(key => {
-      // Only include fields that have actually changed and are not undefined/null
-      if (formData[key] !== originalStudent[key] && 
-          formData[key] !== undefined && 
-          formData[key] !== null && 
-          formData[key] !== '') {
-        changes[key] = formData[key];
+      // Special handling for age field
+      if (key === 'age') {
+        const newAge = formData[key] && formData[key].trim() !== '' ? Number(formData[key]) : null;
+        const originalAge = originalStudent[key] || null;
+        if (newAge !== originalAge) {
+          changes[key] = newAge;
+        }
+      } else {
+        // Only include fields that have actually changed and are not undefined/null
+        if (formData[key] !== originalStudent[key] && 
+            formData[key] !== undefined && 
+            formData[key] !== null && 
+            formData[key] !== '') {
+          changes[key] = formData[key];
+        }
       }
     });
     return changes;
@@ -522,7 +531,7 @@ export default function EditStudent() {
           
           <form onSubmit={handleEdit}>
             <div className="form-group">
-              <label>Full Name <span style={{color: 'red'}}>*</span></label>
+              <label>Full Name</label>
               <input
                 className="form-input"
                 name="name"
@@ -533,23 +542,24 @@ export default function EditStudent() {
                 autocomplete="off"
               />
             </div>
-            <div className="form-group">
-              <label>Age <span style={{color: 'red'}}>*</span></label>
-              <input
-                className="form-input"
-                name="age"
-                type="number"
-                min="10"
-                max="30"
-                placeholder="Enter student's age"
-                value={formData.age || ''}
-                onChange={handleChange}
-                required
-              />
-            </div>
+            {(originalStudent && originalStudent.age) && (
+              <div className="form-group">
+                <label>Age</label>
+                <input
+                  className="form-input"
+                  name="age"
+                  type="number"
+                  min="10"
+                  max="30"
+                  placeholder="Enter student's age (optional)"
+                  value={formData.age || ''}
+                  onChange={handleChange}
+                />
+              </div>
+            )}
             <div className="form-row">
               <div className="form-group">
-                <label>Grade <span style={{color: 'red'}}>*</span></label>
+                <label>Grade</label>
                 <GradeSelect 
                   selectedGrade={formData.grade || ''} 
                   onGradeChange={(grade) => handleChange({ target: { name: 'grade', value: grade } })} 
@@ -560,7 +570,7 @@ export default function EditStudent() {
                 />
               </div>
               <div className="form-group">
-                <label>School <span style={{color: 'red'}}>*</span></label>
+                <label>School</label>
                 <input
                   className="form-input"
                   name="school"
@@ -574,7 +584,7 @@ export default function EditStudent() {
             </div>
             <div className="form-row">
               <div className="form-group">
-                <label>Student Phone <span style={{color: 'red'}}>*</span></label>
+                <label>Student Phone</label>
                 <input
                   className="form-input"
                   name="phone"
@@ -597,7 +607,7 @@ export default function EditStudent() {
                 </small>
               </div>
               <div className="form-group">
-                <label>Parent's Phone <span style={{color: 'red'}}>*</span></label>
+                <label>Parent's Phone</label>
                 <input
                   className="form-input"
                   name="parents_phone"
@@ -621,7 +631,7 @@ export default function EditStudent() {
               </div>
             </div>
             <div className="form-group" style={{ width: '100%' }}>
-              <label>Main Center <span style={{color: 'red'}}>*</span></label>
+              <label>Main Center</label>
               <CenterSelect 
                 selectedCenter={formData.main_center || ''} 
                 onCenterChange={(center) => handleChange({ target: { name: 'main_center', value: center } })} 

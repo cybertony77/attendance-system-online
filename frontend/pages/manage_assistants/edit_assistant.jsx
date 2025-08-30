@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import bcrypt from "bcryptjs";
 import Title from "../../components/Title";
+import RoleSelect from "../../components/RoleSelect";
 import { useAssistant, useUpdateAssistant } from '../../lib/api/assistants';
 
 function decodeJWT(token) {
@@ -173,15 +173,15 @@ export default function EditAssistant() {
     
     // Handle password separately - only include if it was changed and not empty
     if (changedFields.password && changedFields.password.trim() !== "") {
-      // Hash the password before sending
-      payload.password = await bcrypt.hash(changedFields.password, 10);
+      // Send the raw password - backend will hash it
+      payload.password = changedFields.password;
     } else if (changedFields.password !== undefined) {
       // If password field was cleared, don't send it
       delete payload.password;
     }
     
     updateAssistantMutation.mutate(
-      { id, data: payload },
+      { id, updateData: payload },
       {
         onSuccess: () => {
           setSuccess(true);
@@ -200,7 +200,7 @@ export default function EditAssistant() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", padding: "20px" }}>
+    <div style={{ padding: "20px" }}>
       <div style={{ maxWidth: 600, margin: "40px auto", padding: 24 }}>
         <style jsx>{`
           .header {
@@ -451,18 +451,18 @@ export default function EditAssistant() {
             
             <form onSubmit={handleSubmit}>
               <div className="form-group">
-                <label>ID *</label>
+                <label>Username</label>
                 <input
                   className="form-input"
                   name="id"
-                  placeholder="Edit assistant ID"
+                  placeholder="Edit assistant username"
                   value={form.id}
                   onChange={handleChange}
                   required
                 />
               </div>
               <div className="form-group">
-                <label>Name *</label>
+                <label>Name</label>
                 <input
                   className="form-input"
                   name="name"
@@ -473,7 +473,7 @@ export default function EditAssistant() {
                 />
               </div>
               <div className="form-group">
-                <label>Phone *</label>
+                <label>Phone</label>
                 <input
                   className="form-input"
                   name="phone"
@@ -533,17 +533,12 @@ export default function EditAssistant() {
                 </div>
               </div>
               <div className="form-group">
-                <label>Role *</label>
-                              <select
-                className="form-input"
-                name="role"
-                value={form.role}
-                onChange={handleChange}
-                required
-              >
-                <option value="assistant">assistant</option>
-                <option value="admin">admin</option>
-              </select>
+                <label>Role</label>
+                <RoleSelect 
+                  selectedRole={form.role}
+                  onRoleChange={(role) => setForm({ ...form, role })}
+                  required={true}
+                />
               </div>
               <button type="submit" disabled={updateAssistantMutation.isPending || !hasChanges()} className="submit-btn">
                 {updateAssistantMutation.isPending ? "Saving..." : "Save Changes"}
