@@ -315,7 +315,7 @@ export default function Login() {
         <form onSubmit={handleLogin} autoComplete="off">
             <div className="form-group" style={{ marginBottom: usernameError ? 4 : 38 }}>
               <FloatingLabelInput
-                label="Assistant ID"
+                label="Username"
                 value={assistant_id}
                 onChange={e => setAssistantId(e.target.value)}
                 error={usernameError || undefined}
