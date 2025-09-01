@@ -55,7 +55,6 @@ export default function History() {
     const rememberedGrade = sessionStorage.getItem('historySelectedGrade');
     const rememberedCenter = sessionStorage.getItem('historySelectedCenter');
     const rememberedWeek = sessionStorage.getItem('historySelectedWeek');
-    const rememberedSearchTerm = sessionStorage.getItem('historySearchTerm');
     
     if (rememberedGrade) {
       setSelectedGrade(rememberedGrade);
@@ -65,9 +64,6 @@ export default function History() {
     }
     if (rememberedWeek) {
       setSelectedWeek(rememberedWeek);
-    }
-    if (rememberedSearchTerm) {
-      setSearchTerm(rememberedSearchTerm);
     }
   }, []);
 
@@ -231,16 +227,7 @@ export default function History() {
         <div style={{ marginBottom: 20 }}>
           <InputWithButton
             value={searchTerm}
-            onChange={e => {
-              const value = e.target.value;
-              setSearchTerm(value);
-              // Remember the search term
-              if (value) {
-                sessionStorage.setItem('historySearchTerm', value);
-              } else {
-                sessionStorage.removeItem('historySearchTerm');
-              }
-            }}
+            onChange={e => setSearchTerm(e.target.value)}
           />
         </div>
 
