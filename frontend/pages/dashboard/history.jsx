@@ -19,7 +19,7 @@ export function InputWithButton(props) {
     <TextInput
       radius="xl"
       size="md"
-      placeholder="Search by ID or Name"
+      placeholder="Search by ID, Name or School"
       rightSectionWidth={42}
       leftSection={<IconSearch size={18} stroke={1.5} />}
       rightSection={
@@ -162,12 +162,13 @@ export default function History() {
     // Only keep students who have matching records after filtering
     filtered = filtered.filter(student => student.historyRecords.length > 0);
 
-    // Search filter (by id or name)
+    // Search filter (by id, name, or school)
     if (searchTerm.trim() !== "") {
       const term = searchTerm.trim().toLowerCase();
       filtered = filtered.filter(student =>
         student.id.toString().includes(term) ||
-        (student.name && student.name.toLowerCase().includes(term))
+        (student.name && student.name.toLowerCase().includes(term)) ||
+        (student.school && student.school.toLowerCase().includes(term))
       );
     }
 

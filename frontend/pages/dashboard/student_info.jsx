@@ -4,7 +4,7 @@ import Title from "../../components/Title";
 import { Table, ScrollArea } from '@mantine/core';
 import { weeks } from "../../constants/weeks";
 import styles from '../../styles/TableScrollArea.module.css';
-import { useStudent } from '../../lib/api/students';
+import { useStudents, useStudent } from '../../lib/api/students';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 
 export default function StudentInfo() {
@@ -15,6 +15,9 @@ export default function StudentInfo() {
   const [studentDeleted, setStudentDeleted] = useState(false);
   const router = useRouter();
 
+  // Get all students for name-based search
+  const { data: allStudents } = useStudents();
+  
   // React Query hook with real-time updates - 5 second polling
   const { data: student, isLoading: studentLoading, error: studentError, refetch: refetchStudent, isRefetching, dataUpdatedAt } = useStudent(searchId, { 
     enabled: !!searchId,
@@ -95,11 +98,34 @@ export default function StudentInfo() {
 
   const handleIdSubmit = async (e) => {
     e.preventDefault();
+    if (!studentId.trim()) return;
+    
     setError("");
     setStudentDeleted(false); // Reset deletion state for new search
     
-    // Set the search ID to trigger the fetch
-    setSearchId(studentId);
+    const searchTerm = studentId.trim();
+    
+    // Check if it's a numeric ID
+    if (/^\d+$/.test(searchTerm)) {
+      // It's a numeric ID, search directly
+      setSearchId(searchTerm);
+    } else {
+      // It's a name, search through all students (case-insensitive)
+      if (allStudents) {
+        const foundStudent = allStudents.find(student => 
+          student.name.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        
+        if (foundStudent) {
+          setSearchId(foundStudent.id.toString());
+        } else {
+          setError(`No student found with name containing "${searchTerm}"`);
+          setSearchId("");
+        }
+      } else {
+        setError("Student data not loaded. Please try again.");
+      }
+    }
   };
 
   // Clear student data when ID input is emptied
@@ -115,17 +141,18 @@ export default function StudentInfo() {
 
   // Helper function to get attendance status for a week
   const getWeekAttendance = (weekNumber) => {
-    if (!student || !student.weeks) return { attended: false, hwDone: false, paidSession: false, quizDegree: null, message_state: false };
+    if (!student || !student.weeks) return { attended: false, hwDone: false, paidSession: false, quizDegree: null, message_state: false, lastAttendance: null };
     
     const weekData = student.weeks.find(w => w.week === weekNumber);
-    if (!weekData) return { attended: false, hwDone: false, paidSession: false, quizDegree: null, message_state: false };
+    if (!weekData) return { attended: false, hwDone: false, paidSession: false, quizDegree: null, message_state: false, lastAttendance: null };
     
     return {
       attended: weekData.attended || false,
       hwDone: weekData.hwDone || false,
       paidSession: weekData.paidSession || false,
       quizDegree: weekData.quizDegree || null,
-      message_state: weekData.message_state || false
+      message_state: weekData.message_state || false,
+      lastAttendance: weekData.lastAttendance || null
     };
   };
 
@@ -305,7 +332,7 @@ export default function StudentInfo() {
             <input
               className="fetch-input"
               type="text"
-              placeholder="Enter student ID (e.g., 1)"
+              placeholder="Enter student ID or Name"
               value={studentId}
               onChange={handleIdChange}
               required
@@ -376,11 +403,11 @@ export default function StudentInfo() {
                         </Table.Td>
                         <Table.Td style={{ width: '120px', minWidth: '120px', textAlign: 'center' }}>
                           <span style={{ 
-                            color: weekData.attended ? '#28a745' : '#dc3545',
+                            color: weekData.attended ? (weekData.lastAttendance ? '#212529' : '#28a745') : '#dc3545',
                             fontWeight: 'bold',
                             fontSize: '1rem'
                           }}>
-                            {weekData.attended ? '✅ Yes' : '❌ No'}
+                            {weekData.attended ? (weekData.lastAttendance || '✅ Yes') : '❌ No'}
                           </span>
                         </Table.Td>
                         <Table.Td style={{ width: '120px', minWidth: '120px', textAlign: 'center' }}>

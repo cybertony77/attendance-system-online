@@ -4,7 +4,7 @@ import CenterSelect from "../../components/CenterSelect";
 import BackToDashboard from "../../components/BackToDashboard";
 import GradeSelect from '../../components/GradeSelect';
 import Title from '../../components/Title';
-import { useStudent, useUpdateStudent } from '../../lib/api/students';
+import { useStudents, useStudent, useUpdateStudent } from '../../lib/api/students';
 
 // Helper to normalize grade values to match select options
 function normalizeGrade(grade) {
@@ -27,6 +27,7 @@ export default function EditStudent() {
   const [openDropdown, setOpenDropdown] = useState(null); // 'grade', 'center', or null
 
   // React Query hooks
+  const { data: allStudents } = useStudents();
   const { data: student, isLoading: studentLoading, error: studentError } = useStudent(searchId, { enabled: !!searchId });
   const updateStudentMutation = useUpdateStudent();
   useEffect(() => {
@@ -102,12 +103,35 @@ export default function EditStudent() {
 
   const handleIdSubmit = async (e) => {
     e.preventDefault();
+    if (!studentId.trim()) return;
+    
     setError("");
     setSuccess(false);
     setOriginalStudent(null);
     
-    // Set the search ID to trigger the fetch
-    setSearchId(studentId);
+    const searchTerm = studentId.trim();
+    
+    // Check if it's a numeric ID
+    if (/^\d+$/.test(searchTerm)) {
+      // It's a numeric ID, search directly
+      setSearchId(searchTerm);
+    } else {
+      // It's a name, search through all students (case-insensitive)
+      if (allStudents) {
+        const foundStudent = allStudents.find(student => 
+          student.name.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        
+        if (foundStudent) {
+          setSearchId(foundStudent.id.toString());
+        } else {
+          setError(`No student found with name containing "${searchTerm}"`);
+          setSearchId("");
+        }
+      } else {
+        setError("Student data not loaded. Please try again.");
+      }
+    }
   };
 
   // Clear student data when ID input is emptied
@@ -133,21 +157,12 @@ export default function EditStudent() {
     
     const changes = {};
     Object.keys(formData).forEach(key => {
-      // Special handling for age field
-      if (key === 'age') {
-        const newAge = formData[key] && formData[key].trim() !== '' ? Number(formData[key]) : null;
-        const originalAge = originalStudent[key] || null;
-        if (newAge !== originalAge) {
-          changes[key] = newAge;
-        }
-      } else {
-        // Only include fields that have actually changed and are not undefined/null
-        if (formData[key] !== originalStudent[key] && 
-            formData[key] !== undefined && 
-            formData[key] !== null && 
-            formData[key] !== '') {
-          changes[key] = formData[key];
-        }
+      // Only include fields that have actually changed and are not undefined/null
+      if (formData[key] !== originalStudent[key] && 
+          formData[key] !== undefined && 
+          formData[key] !== null && 
+          formData[key] !== '') {
+        changes[key] = formData[key];
       }
     });
     return changes;
@@ -505,7 +520,7 @@ export default function EditStudent() {
           <input
             className="fetch-input"
             type="text"
-            placeholder="Enter student ID (e.g., 1)"
+            placeholder="Enter student ID or Name"
             value={studentId}
             onChange={handleIdChange}
             required
@@ -531,7 +546,7 @@ export default function EditStudent() {
           
           <form onSubmit={handleEdit}>
             <div className="form-group">
-              <label>Full Name</label>
+              <label>Full Name <span style={{color: 'red'}}>*</span></label>
               <input
                 className="form-input"
                 name="name"
@@ -542,24 +557,23 @@ export default function EditStudent() {
                 autocomplete="off"
               />
             </div>
-            {(originalStudent && originalStudent.age) && (
-              <div className="form-group">
-                <label>Age</label>
-                <input
-                  className="form-input"
-                  name="age"
-                  type="number"
-                  min="10"
-                  max="30"
-                  placeholder="Enter student's age (optional)"
-                  value={formData.age || ''}
-                  onChange={handleChange}
-                />
-              </div>
-            )}
+            <div className="form-group">
+              <label>Age <span style={{color: 'red'}}>*</span></label>
+              <input
+                className="form-input"
+                name="age"
+                type="number"
+                min="10"
+                max="30"
+                placeholder="Enter student's age"
+                value={formData.age || ''}
+                onChange={handleChange}
+                required
+              />
+            </div>
             <div className="form-row">
               <div className="form-group">
-                <label>Grade</label>
+                <label>Grade <span style={{color: 'red'}}>*</span></label>
                 <GradeSelect 
                   selectedGrade={formData.grade || ''} 
                   onGradeChange={(grade) => handleChange({ target: { name: 'grade', value: grade } })} 
@@ -570,7 +584,7 @@ export default function EditStudent() {
                 />
               </div>
               <div className="form-group">
-                <label>School</label>
+                <label>School <span style={{color: 'red'}}>*</span></label>
                 <input
                   className="form-input"
                   name="school"
@@ -584,7 +598,7 @@ export default function EditStudent() {
             </div>
             <div className="form-row">
               <div className="form-group">
-                <label>Student Phone</label>
+                <label>Student Phone <span style={{color: 'red'}}>*</span></label>
                 <input
                   className="form-input"
                   name="phone"
@@ -607,7 +621,7 @@ export default function EditStudent() {
                 </small>
               </div>
               <div className="form-group">
-                <label>Parent's Phone</label>
+                <label>Parent's Phone <span style={{color: 'red'}}>*</span></label>
                 <input
                   className="form-input"
                   name="parents_phone"
@@ -631,7 +645,7 @@ export default function EditStudent() {
               </div>
             </div>
             <div className="form-group" style={{ width: '100%' }}>
-              <label>Main Center</label>
+              <label>Main Center <span style={{color: 'red'}}>*</span></label>
               <CenterSelect 
                 selectedCenter={formData.main_center || ''} 
                 onCenterChange={(center) => handleChange({ target: { name: 'main_center', value: center } })} 

@@ -17,7 +17,7 @@ export function InputWithButton(props) {
     <TextInput
       radius="xl"
       size="md"
-      placeholder="Search by ID or Name"
+                  placeholder="Search by ID, Name or School"
       rightSectionWidth={42}
       leftSection={<IconSearch size={18} stroke={1.5} />}
       rightSection={
@@ -122,9 +122,10 @@ export default function AllStudents() {
         // Only digits: exact match for ID
         filtered = filtered.filter(student => student.id.toString() === term);
       } else {
-        // Otherwise: starts with for name
+        // Otherwise: search in name or school (case-insensitive, contains match)
         filtered = filtered.filter(student =>
-          student.name && student.name.toLowerCase().startsWith(term)
+          (student.name && student.name.toLowerCase().includes(term)) ||
+          (student.school && student.school.toLowerCase().includes(term))
         );
       }
     }
@@ -214,12 +215,13 @@ export default function AllStudents() {
             </div>
           ) : (
             <ScrollArea h={400} type="hover" className={styles.scrolled}>
-              <Table striped highlightOnHover withTableBorder withColumnBorders style={{ minWidth: '800px' }}>
+              <Table striped highlightOnHover withTableBorder withColumnBorders style={{ minWidth: '950px' }}>
                 <Table.Thead style={{ position: 'sticky', top: 0, backgroundColor: '#f8f9fa', zIndex: 10 }}>
                   <Table.Tr>
                     <Table.Th style={{ width: '80px', minWidth: '80px', textAlign: 'center' }}>ID</Table.Th>
                     <Table.Th style={{ width: '150px', minWidth: '150px', textAlign: 'center' }}>Name</Table.Th>
                     <Table.Th style={{ width: '120px', minWidth: '120px', textAlign: 'center' }}>Grade</Table.Th>
+                    <Table.Th style={{ width: '150px', minWidth: '150px', textAlign: 'center' }}>School</Table.Th>
                     <Table.Th style={{ width: '140px', minWidth: '140px', textAlign: 'center' }}>Student Phone</Table.Th>
                     <Table.Th style={{ width: '140px', minWidth: '140px', textAlign: 'center' }}>Parent Phone</Table.Th>
                     <Table.Th style={{ width: '130px', minWidth: '130px', textAlign: 'center' }}>Center</Table.Th>
@@ -231,6 +233,7 @@ export default function AllStudents() {
                       <Table.Td style={{ fontWeight: 'bold', color: '#1FA8DC', width: '80px', minWidth: '80px', textAlign: 'center' }}>{student.id}</Table.Td>
                       <Table.Td style={{ fontWeight: '600', width: '150px', minWidth: '150px', textAlign: 'center' }}>{student.name}</Table.Td>
                       <Table.Td style={{ width: '120px', minWidth: '120px', textAlign: 'center' }}>{student.grade}</Table.Td>
+                      <Table.Td style={{ width: '150px', minWidth: '150px', textAlign: 'center' }}>{student.school || 'N/A'}</Table.Td>
                       <Table.Td style={{ fontFamily: 'monospace', fontSize: '0.9rem', width: '140px', minWidth: '140px', textAlign: 'center' }}>{student.phone}</Table.Td>
                       <Table.Td style={{ fontFamily: 'monospace', fontSize: '0.9rem', width: '140px', minWidth: '140px', textAlign: 'center' }}>{student.parents_phone}</Table.Td>
                       <Table.Td style={{ width: '130px', minWidth: '130px', textAlign: 'center' }}>{student.main_center}</Table.Td>

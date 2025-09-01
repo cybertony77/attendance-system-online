@@ -78,9 +78,6 @@ const WhatsAppButton = ({ student, onMessageSent }) => {
       let whatsappMessage = `TopPhysics academy:
 
   • Name: ${student.name}
-  • Age: ${student.age || 'N/A'}
-  • Grade: ${student.grade || 'N/A'}
-  • School: ${student.school || 'N/A'}
   • Week: ${student.currentWeekNumber || 1}
   • Attended: ${currentWeek.attended ? `${currentWeek.lastAttendance}` : 'No'}`;
 

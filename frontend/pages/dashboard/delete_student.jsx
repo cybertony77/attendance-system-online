@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import BackToDashboard from "../../components/BackToDashboard";
 import Title from '../../components/Title';
-import { useStudent, useDeleteStudent } from '../../lib/api/students';
+import { useStudents, useStudent, useDeleteStudent } from '../../lib/api/students';
 
 export default function DeleteStudent() {
   const router = useRouter();
@@ -14,6 +14,7 @@ export default function DeleteStudent() {
   const [showConfirm, setShowConfirm] = useState(false);
 
   // React Query hooks
+  const { data: allStudents } = useStudents();
   const { data: student, isLoading: studentLoading, error: studentError } = useStudent(searchId, { enabled: !!searchId });
   const deleteStudentMutation = useDeleteStudent();
 
@@ -41,15 +42,37 @@ export default function DeleteStudent() {
 
   const checkStudent = async () => {
     if (!studentId.trim()) {
-      setError("Please enter a student ID");
+      setError("Please enter a student ID or name");
       return;
     }
 
     setError("");
-    setLastCheckedId(studentId.trim());
     
-    // Set the search ID to trigger the fetch
-    setSearchId(studentId);
+    const searchTerm = studentId.trim();
+    setLastCheckedId(searchTerm);
+    
+    // Check if it's a numeric ID
+    if (/^\d+$/.test(searchTerm)) {
+      // It's a numeric ID, search directly
+      setSearchId(searchTerm);
+    } else {
+      // It's a name, search through all students (case-insensitive)
+      if (allStudents) {
+        const foundStudent = allStudents.find(student => 
+          student.name.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        
+        if (foundStudent) {
+          setSearchId(foundStudent.id.toString());
+          setLastCheckedId(foundStudent.id.toString()); // Update with actual ID for consistency
+        } else {
+          setError(`No student found with name containing "${searchTerm}"`);
+          setSearchId("");
+        }
+      } else {
+        setError("Student data not loaded. Please try again.");
+      }
+    }
   };
 
   const deleteStudent = async () => {
@@ -337,7 +360,7 @@ export default function DeleteStudent() {
                     setError("");
                   }
                 }}
-                placeholder="Enter student ID (e.g., 1)"
+                placeholder="Enter student ID or Name"
                 disabled={studentLoading || deleteStudentMutation.isPending}
                 required
               />
