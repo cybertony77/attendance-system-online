@@ -110,10 +110,10 @@ export default function StudentInfo() {
       // It's a numeric ID, search directly
       setSearchId(searchTerm);
     } else {
-      // It's a name, search through all students (case-insensitive)
+      // It's a name, search through all students (case-insensitive, starts with)
       if (allStudents) {
         const foundStudent = allStudents.find(student => 
-          student.name.toLowerCase().includes(searchTerm.toLowerCase())
+          student.name.toLowerCase().startsWith(searchTerm.toLowerCase())
         );
         
         if (foundStudent) {

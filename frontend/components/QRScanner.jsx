@@ -28,70 +28,96 @@ const QRScanner = ({ onQRCodeScanned, onError }) => {
 
       // getUserMedia first
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+        video: { 
+          facingMode: 'environment', 
+          width: { ideal: 1280, min: 640 }, 
+          height: { ideal: 720, min: 480 } 
+        }
       });
 
       // attach stream
       videoRef.current.srcObject = stream;
 
-      // wait for playback
+      // wait for playback and ensure dimensions are available
       await new Promise((resolve, reject) => {
         const video = videoRef.current;
         const onLoaded = () => {
+          // Ensure video has valid dimensions before proceeding
+          if (video.videoWidth === 0 || video.videoHeight === 0) {
+            reject(new Error('Video dimensions not available'));
+            return;
+          }
+          
           video.play().then(resolve).catch(reject);
         };
         video.onloadedmetadata = onLoaded;
         video.onerror = reject;
-        setTimeout(() => reject(new Error('Video loading timeout')), 5000);
+        setTimeout(() => reject(new Error('Video loading timeout')), 8000); // Increased timeout
       });
 
-      // create reader
-      codeReaderRef.current = new BrowserQRCodeReader();
+      // Double-check dimensions after loading
+      if (videoRef.current.videoWidth === 0 || videoRef.current.videoHeight === 0) {
+        throw new Error('Video dimensions could not be determined');
+      }
+
+      // create reader with error handling
+      try {
+        codeReaderRef.current = new BrowserQRCodeReader();
+      } catch (readerErr) {
+        throw new Error(`Failed to initialize QR reader: ${readerErr.message}`);
+      }
 
       // ⚠️ Mark camera started BEFORE kicking off decode to avoid re-entrancy
       setCameraStarted(true);
 
-      // Start decoding (do not await; we manage lifecycle via sessionRef)
-      codeReaderRef.current.decodeFromVideoElement(
-        videoRef.current,
-        (result, err) => {
-          // Ignore any callbacks from older/aborted sessions
-          if (mySession !== sessionRef.current) return;
+      // Start decoding with better error handling
+      try {
+        codeReaderRef.current.decodeFromVideoElement(
+          videoRef.current,
+          (result, err) => {
+            // Ignore any callbacks from older/aborted sessions
+            if (mySession !== sessionRef.current) return;
 
-          if (result) {
-            const text = result.text ?? (result.getText?.() || '');
-            const studentId = extractStudentId(text);
-            if (studentId) {
-              onQRCodeScanned?.(studentId);
-              stopCamera(); // stop after first valid scan
-            } else {
-              setError('Invalid QR code: not a valid student ID');
+                        if (result) {
+              const text = result.text ?? (result.getText?.() || '');
+              const studentId = extractStudentId(text);
+              if (studentId) {
+                // Only pass valid student IDs to the callback
+                onQRCodeScanned?.(studentId);
+                stopCamera(); // stop after first valid scan
+              } else {
+                // QR code doesn't contain a valid student ID - show to user
+                setError(`This QR Code Dont Have id Parameter, ${text}`);
+              }
+            }
+
+            // Handle specific ZXing errors - only log to console, don't show to user
+            if (err) {
+              if (err.name === 'NotFoundException') {
+                // This is normal - no QR code detected yet
+                return;
+              } else {
+                // Log all QR scanning errors to console only
+                console.warn('QR scanning warning:', err);
+              }
             }
           }
-
-          // Only log/handle non-NotFound errors
-          if (err && err.name !== 'NotFoundException') {
-            if (onError) onError(err);
-            // Optional: setError(err.message || 'Scanning error');
-          }
-        }
-      );
+        );
+      } catch (decodeErr) {
+        throw new Error(`QR decoding failed: ${decodeErr.message}`);
+      }
     } catch (err) {
       if (onError) onError(err);
       console.error('Camera error:', err);
-      if (err.message === 'Video element not available') {
-        setError('Video element not ready. Please try again.');
-      } else if (err.message === 'Video loading timeout') {
-        setError('Video failed to load. Please try again.');
-      } else if (err.name === 'NotAllowedError') {
+      
+      // Only show critical permission errors to user, log everything else to console
+      if (err.name === 'NotAllowedError') {
         setError('Camera permission denied. Please allow camera access and try again.');
-      } else if (err.name === 'NotReadableError' || err.name === 'NotFoundError') {
-        setError('Camera not available. Please check if another app is using the camera.');
-      } else if (err.name === 'NotSupportedError') {
-        setError('Camera not supported in this browser. Please try a different browser.');
       } else {
-        setError('Failed to start camera. Please try again.');
+        // Log all other camera errors to console only
+        console.warn('Camera initialization warning:', err);
       }
+      
       setIsScanning(false);
       setVideoReady(false);
       setCameraStarted(false);

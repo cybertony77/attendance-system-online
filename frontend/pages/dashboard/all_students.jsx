@@ -122,10 +122,10 @@ export default function AllStudents() {
         // Only digits: exact match for ID
         filtered = filtered.filter(student => student.id.toString() === term);
       } else {
-        // Otherwise: search in name or school (case-insensitive, contains match)
+        // Otherwise: search in name (starts with) or school (starts with)
         filtered = filtered.filter(student =>
-          (student.name && student.name.toLowerCase().includes(term)) ||
-          (student.school && student.school.toLowerCase().includes(term))
+          (student.name && student.name.toLowerCase().startsWith(term)) ||
+          (student.school && student.school.toLowerCase().startsWith(term))
         );
       }
     }

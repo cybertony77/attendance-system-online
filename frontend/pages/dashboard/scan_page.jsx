@@ -4,7 +4,7 @@ import { AVAILABLE_CENTERS } from "../../constants/centers";
 import Title from "../../components/Title";
 import AttendanceWeekSelect from "../../components/AttendanceWeekSelect";
 import CenterSelect from "../../components/CenterSelect";
-import QRScanner from "../../components/QRSanner";
+import QRScanner from "../../components/QRScanner";
 import { useStudents, useStudent, useToggleAttendance, useUpdateHomework, useUpdatePayment, useUpdateQuizGrade } from "../../lib/api/students";
 
 // Helper to extract student ID from QR text (URL or plain number)
@@ -44,11 +44,14 @@ export default function QR() {
   // React Query hooks with enhanced real-time updates
   const { data: rawStudent, isLoading: studentLoading, error: studentError } = useStudent(searchId, { 
     enabled: !!searchId,
-    // Enhanced real-time settings
-    refetchInterval: 5 * 1000, // Refetch every 5 seconds for real-time updates
+    // Optimized for fast error responses
+    refetchInterval: 2 * 1000, // Refetch every 2 seconds for faster updates
     refetchIntervalInBackground: true, // Continue when tab is not active
     refetchOnWindowFocus: true, // Immediate update when switching back to tab
     staleTime: 0, // Always consider data stale for immediate updates
+    gcTime: 1000, // Keep in cache for only 1 second to force fresh data
+    retry: 1, // Only retry once to show errors faster
+    retryDelay: 500, // Retry after 500ms instead of default longer delay
   });
   
   // Get all students for name-based search
@@ -151,10 +154,10 @@ export default function QR() {
       // It's a numeric ID, search directly
       setSearchId(searchTerm);
     } else {
-      // It's a name, search through all students (case-insensitive)
+      // It's a name, search through all students (case-insensitive, starts with)
       if (allStudents) {
         const foundStudent = allStudents.find(student => 
-          student.name.toLowerCase().includes(searchTerm.toLowerCase())
+          student.name.toLowerCase().startsWith(searchTerm.toLowerCase())
         );
         
         if (foundStudent) {
@@ -192,9 +195,9 @@ export default function QR() {
   const handleQRScannerError = (errorMessage) => {
     // Handle both Error objects and strings
     if (errorMessage instanceof Error) {
-      setError(errorMessage.message || 'An error occurred');
+      console.log(errorMessage.message || 'An error occurred');
     } else {
-      setError(errorMessage);
+      console.log(errorMessage);
     }
   };
 
@@ -206,12 +209,25 @@ export default function QR() {
     }
   }, [error]);
 
-  // Handle student errors from React Query
+  // Handle student errors from React Query with immediate feedback
   useEffect(() => {
     if (studentError) {
       setError("Student not found or unauthorized.");
     }
   }, [studentError]);
+
+  // Show immediate error when searchId changes but no student is found after a short delay
+  useEffect(() => {
+    if (searchId && !studentLoading) {
+      const timer = setTimeout(() => {
+        if (!rawStudent && !studentError) {
+          setError("Student not found or unauthorized.");
+        }
+      }, 1000); // Show error after 1 second if no data and no error
+      
+      return () => clearTimeout(timer);
+    }
+  }, [searchId, studentLoading, rawStudent, studentError]);
 
   // Clear optimistic state when student or week changes
   useEffect(() => {
