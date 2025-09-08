@@ -120,22 +120,6 @@ export default async function handler(req, res) {
     
     console.log(`Successfully updated message_state for student ${student_id}, week ${weekNumber}`);
     
-    // Only update history record if student is currently attended for this week
-    const currentWeek = student.weeks ? student.weeks[weekIndex] : null;
-    if (currentWeek && currentWeek.attended) {
-      await db.collection('history').updateOne(
-        { 
-          studentId: student_id,
-          week: weekNumber
-        },
-        { 
-          $set: { message_state: !!message_state }
-        },
-        { sort: { _id: -1 } }
-      );
-      console.log(`Updated history message_state for student ${student_id}, week ${weekNumber}`);
-    }
-    
     res.json({ success: true });
   } catch (error) {
     if (error.message.includes('Unauthorized') || error.message.includes('Invalid token')) {

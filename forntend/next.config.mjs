@@ -8,6 +8,17 @@ const nextConfig = {
   },
   async headers() {
     return [
+      // Global headers
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(self)', // allow camera for same-origin
+          },
+        ],
+      },
+      //  Existing logo caching rule
       {
         source: '/logo.png',
         headers: [

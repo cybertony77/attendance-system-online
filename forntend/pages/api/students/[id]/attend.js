@@ -109,20 +109,13 @@ export default async function handler(req, res) {
       }
       console.log('✅ Student marked as attended for week', weekNumber);
       
-      // Create history record
+      // Create simplified history record (only studentId and week)
       const historyRecord = {
         studentId: student.id,
-        week: weekNumber,
-        main_center: student.main_center || 'n/a',
-        center: lastAttendanceCenter || 'n/a',
-        attendanceDate: lastAttendance || 'n/a',
-        hwDone: false,
-        paidSession: false,
-        quizDegree: null,
-        message_state: false
+        week: weekNumber
       };
       
-      console.log('📝 Creating history record:', historyRecord);
+      console.log('📝 Creating simplified history record:', historyRecord);
       const historyResult = await db.collection('history').insertOne(historyRecord);
       console.log('✅ History record created with ID:', historyResult.insertedId);
       
@@ -135,7 +128,8 @@ export default async function handler(req, res) {
         [`weeks.${weekIndex}.lastAttendanceCenter`]: null,
         [`weeks.${weekIndex}.hwDone`]: false,
         [`weeks.${weekIndex}.paidSession`]: false,
-        [`weeks.${weekIndex}.quizDegree`]: null
+        [`weeks.${weekIndex}.quizDegree`]: null,
+        [`weeks.${weekIndex}.message_state`]: false
       };
       
       const result = await db.collection('students').updateOne(
@@ -149,7 +143,7 @@ export default async function handler(req, res) {
       }
       console.log('✅ Student marked as not attended for week', weekNumber);
       
-      // Remove history record for this student and week
+      // Remove simplified history record for this student and week
       const historyDeleteResult = await db.collection('history').deleteMany({
         studentId: student_id,
         week: weekNumber

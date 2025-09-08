@@ -34,8 +34,9 @@ export default function RoleSelect({ selectedRole, onRoleChange, required = fals
         onClick={actualOnToggle}
         onBlur={() => setTimeout(actualOnClose, 200)}
       >
-        <span>{selectedRole || 'Select Role'}</span>
-        <span style={{ fontSize: '0.8rem', color: '#adb5bd' }}>▼</span>
+        <span>
+          {selectedRole || 'Select Role'}
+        </span>
       </div>
       
       {actualIsOpen && (

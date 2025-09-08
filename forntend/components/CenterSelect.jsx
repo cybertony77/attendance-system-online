@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { AVAILABLE_CENTERS } from "../constants/centers";
+import { useQuery } from '@tanstack/react-query';
+import axios from 'axios';
+import { getApiBaseUrl } from '../config';
 
 export default function CenterSelect({ selectedCenter, onCenterChange, required = false, isOpen, onToggle, onClose }) {
   // Handle legacy props (value, onChange) for backward compatibility
@@ -7,6 +9,28 @@ export default function CenterSelect({ selectedCenter, onCenterChange, required 
   const actualIsOpen = isOpen !== undefined ? isOpen : internalIsOpen;
   const actualOnToggle = onToggle || (() => setInternalIsOpen(!internalIsOpen));
   const actualOnClose = onClose || (() => setInternalIsOpen(false));
+
+  // Get token from sessionStorage (consistent with rest of app)
+  const token = typeof window !== 'undefined' ? sessionStorage.getItem('token') : null;
+
+  // Fetch centers from API
+  const { data: centers = [], isLoading, error } = useQuery({
+    queryKey: ['centers'],
+    queryFn: async () => {
+      console.log('🔄 CenterSelect: Fetching centers data');
+      const response = await axios.get(`${getApiBaseUrl()}/api/centers`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const centerNames = response.data.centers.map(center => center.name);
+      console.log('🔄 CenterSelect: Received centers:', centerNames);
+      return centerNames;
+    },
+    enabled: !!token,
+    retry: 3,
+    retryDelay: 1000,
+    staleTime: 0, // Always consider data stale for immediate updates
+    gcTime: 10 * 60 * 1000 // 10 minutes
+  });
 
   const handleCenterSelect = (center) => {
     onCenterChange(center);
@@ -33,7 +57,9 @@ export default function CenterSelect({ selectedCenter, onCenterChange, required 
         onClick={actualOnToggle}
         onBlur={() => setTimeout(actualOnClose, 200)}
       >
-        <span>{selectedCenter || 'Select Center'}</span>
+        <span>
+          {isLoading ? 'Loading centers...' : (selectedCenter || 'Select Center')}
+        </span>
       </div>
       
 
@@ -69,7 +95,40 @@ export default function CenterSelect({ selectedCenter, onCenterChange, required 
           >
             ✕ Clear selection
           </div>
-          {AVAILABLE_CENTERS.map((center) => (
+          {error ? (
+            <div
+              style={{
+                padding: '12px 16px',
+                color: '#dc3545',
+                fontSize: '0.9rem',
+                textAlign: 'center'
+              }}
+            >
+              Error loading centers
+            </div>
+          ) : isLoading ? (
+            <div
+              style={{
+                padding: '12px 16px',
+                color: '#666',
+                fontSize: '0.9rem',
+                textAlign: 'center'
+              }}
+            >
+              Loading centers...
+            </div>
+          ) : centers.length === 0 ? (
+            <div
+              style={{
+                padding: '12px 16px',
+                color: '#666',
+                fontSize: '0.9rem',
+                textAlign: 'center'
+              }}
+            >
+              No centers available
+            </div>
+          ) : centers.map((center) => (
             <div
               key={center}
               style={{

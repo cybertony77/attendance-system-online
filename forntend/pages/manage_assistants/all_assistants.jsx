@@ -108,9 +108,9 @@ export default function AllAssistants() {
         // Only digits: exact match for id
         filtered = filtered.filter(assistant => assistant.id.toString() === term);
       } else {
-        // Otherwise: starts with for name
+        // Otherwise: includes for name
         filtered = filtered.filter(assistant =>
-          assistant.name && assistant.name.toLowerCase().startsWith(term)
+          assistant.name && assistant.name.toLowerCase().includes(term)
         );
       }
     }
@@ -121,12 +121,45 @@ export default function AllAssistants() {
     return (
       <div style={{ 
         minHeight: "100vh", 
-        padding: "20px 5px 20px 5px",
+        padding: "20px 10px",
         display: "flex",
         alignItems: "center",
         justifyContent: "center"
       }}>
-        <LoadingSkeleton />
+        <div style={{ 
+          width: "100%", 
+          maxWidth: "900px",
+          padding: "0 10px"
+        }}>
+          <LoadingSkeleton />
+        </div>
+        <style jsx>{`
+          @media (max-width: 768px) {
+            div[style*="padding: 20px 10px"] {
+              padding: 15px 8px !important;
+            }
+            div[style*="maxWidth: 900px"] {
+              padding: 0 5px !important;
+              maxWidth: 100% !important;
+            }
+          }
+          
+          @media (max-width: 480px) {
+            div[style*="padding: 20px 10px"] {
+              padding: 10px 5px !important;
+            }
+            div[style*="maxWidth: 900px"] {
+              padding: 0 !important;
+              maxWidth: 100% !important;
+            }
+          }
+          
+          @media (max-width: 360px) {
+            div[style*="padding: 20px 10px"] {
+              padding: 8px 3px !important;
+            }
+          }
+        `}</style>
       </div>
     );
   }
@@ -137,7 +170,7 @@ export default function AllAssistants() {
       padding: "20px 5px 20px 5px" 
     }}>
       <div ref={containerRef} style={{ maxWidth: 800, margin: "40px auto", padding: "12px" }}>
-        <Title backText="Back to Manage Assistants" href="/manage_assistants">All Assistants</Title>
+        <Title backText="Back to Manage Assistants" href="/manage_assistants" style={{ '--button-width': '180px' }}>All Assistants</Title>
         {/* Search Bar */}
         <div style={{ marginBottom: 20 }}>
           <InputWithButton
@@ -168,8 +201,8 @@ export default function AllAssistants() {
           {filteredAssistants.length === 0 ? (
             <div className="no-results">
               {searchTerm
-                ? "No assistants found with the search term."
-                : "No assistants found."
+                ? "❌ No assistants found with the search term."
+                : "❌ No assistants found."
               }
             </div>
           ) : (

@@ -35,10 +35,11 @@ export default function Dashboard() {
 
   return (
     <div style={{ 
-      height: "100vh",
+      // height: "calc(100dvh - 10rem)",
       padding: "10px 10px 5px 10px",
       display: 'flex',
-      flexDirection: 'column'
+      flexDirection: 'column',
+      overflow: 'auto'
     }}>
       <div className="main-container" style={{ maxWidth: 600, margin: "10px auto", textAlign: "center" }}>
         <div style={{ 
@@ -105,7 +106,7 @@ export default function Dashboard() {
         @media (max-width: 480px) {
           .main-container {
             max-width: 600px;
-            margin: 150px auto !important;
+            margin: 20px auto !important;
             text-align: center;
           }
           .dashboard-btn {
@@ -162,6 +163,12 @@ export default function Dashboard() {
           onClick={() => router.push("/dashboard/qr_generator")}
         >
           🏷️ Create QR Code
+        </button>
+        <button
+          className="dashboard-btn"
+          onClick={() => router.push("/dashboard/centers")}
+        >
+          🏢 Centers
         </button>
         <button
           className="dashboard-btn"

@@ -1,32 +1,17 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/router';
-
-function decodeJWT(token) {
-  try {
-    return JSON.parse(atob(token.split('.')[1]));
-  } catch {
-    return null;
-  }
-}
+import { useProfile } from '../lib/api/auth';
 
 export default function UserMenu() {
   const [open, setOpen] = useState(false);
-  const [user, setUser] = useState({ name: '', assistant_id: '', phone: '', role: '' });
   const menuRef = useRef(null);
   const router = useRouter();
+  
+  // Use React Query to get user profile data
+  const { data: user, isLoading, error } = useProfile();
 
-  useEffect(() => {
-    const token = typeof window !== 'undefined' ? sessionStorage.getItem('token') : null;
-    if (token) {
-      const decoded = decodeJWT(token);
-      setUser({
-        name: decoded?.name || '',
-        assistant_id: decoded?.assistant_id || '',
-        phone: decoded?.phone || '',
-        role: decoded?.role || ''
-      });
-    }
-  }, []);
+  // Fallback user object if data is not available yet
+  const userData = user || { name: '', id: '', phone: '', role: '' };
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -72,7 +57,7 @@ export default function UserMenu() {
           transition: 'box-shadow 0.2s, border 0.2s'
         }}
         onClick={() => setOpen((v) => !v)}
-        title={user.name || user.assistant_id}
+        title={userData.name || userData.id}
       >
         {/* Use user image if available, else fallback to initial */}
         <span style={{ 
@@ -87,7 +72,7 @@ export default function UserMenu() {
           lineHeight: 1,
           textAlign: 'center'
         }}>
-          {user.name ? user.name[0].toUpperCase() : (user.assistant_id ? user.assistant_id[0].toUpperCase() : 'U')}
+          {userData.name ? userData.name[0].toUpperCase() : (userData.id ? userData.id[0].toUpperCase() : 'U')}
         </span>
       </div>
       {open && (
@@ -109,13 +94,13 @@ export default function UserMenu() {
             textAlign: 'left',
             marginBottom: 8
           }}>
-            <div style={{ fontWeight: 800, fontSize: 18, color: '#1FA8DC', marginBottom: 2 }}>{user.name || user.assistant_id}</div>
+            <div style={{ fontWeight: 800, fontSize: 18, color: '#1FA8DC', marginBottom: 2 }}>{userData.name || userData.id}</div>
             <div style={{ color: '#495057', fontSize: 15, fontWeight: 600 }}>
-              {user.assistant_id ? `ID: ${user.assistant_id}` : 'No ID'}
+              {userData.id ? `ID: ${userData.id}` : 'No ID'}
             </div>
           </div>
           <button style={menuBtnStyle} onClick={handleLogout}>Logout</button>
-          {user.role === 'admin' && (
+          {userData.role === 'admin' && (
             <button style={menuBtnStyle} onClick={handleManageAssistants}>Manage Assistants</button>
           )}
           <button style={menuBtnStyle} onClick={handleEditProfile}>Edit My Profile</button>

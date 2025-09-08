@@ -32,6 +32,15 @@ body {
   margin: 0;
 }
 
+/* Prevent double scrollbars but allow scrolling */
+html {
+  overflow-x: hidden;
+}
+
+body {
+  overflow-x: hidden;
+}
+
 a {
   color: inherit;
   text-decoration: none;

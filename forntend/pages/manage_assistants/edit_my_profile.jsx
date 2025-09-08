@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import bcrypt from "bcryptjs";
 import Title from "../../components/Title";
 import { useProfile, useUpdateProfile } from '../../lib/api/auth';
 
@@ -42,7 +41,7 @@ export default function EditMyProfile() {
   // Handle profile error
   useEffect(() => {
     if (profileError) {
-      setError("Failed to fetch profile");
+      setError("❌ Failed to fetch profile");
     }
   }, [profileError]);
 
@@ -95,7 +94,7 @@ export default function EditMyProfile() {
     
     // Check if there are any changes
     if (!hasChanges()) {
-      setError("No changes detected. Please modify at least one field before saving.");
+      setError("❌ No changes detected. Please modify at least one field before saving.");
       return;
     }
     
@@ -107,7 +106,7 @@ export default function EditMyProfile() {
     // Validate phone number if it was changed
     if (changedFields.phone) {
       if (changedFields.phone.length !== 11) {
-        setError("Phone number must be exactly 11 digits");
+        setError("❌ Phone number must be exactly 11 digits");
         return;
       }
     }
@@ -117,8 +116,8 @@ export default function EditMyProfile() {
     
     // Handle password separately - only include if it was changed and not empty
     if (changedFields.password && changedFields.password.trim() !== "") {
-      // Hash the password before sending
-      submitForm.password = await bcrypt.hash(changedFields.password, 10);
+      // Send the raw password - backend will hash it
+      submitForm.password = changedFields.password;
     } else if (changedFields.password !== undefined) {
       // If password field was cleared, don't send it
       delete submitForm.password;
@@ -133,13 +132,13 @@ export default function EditMyProfile() {
         setForm(prev => ({ ...prev, password: "" }));
       },
       onError: () => {
-        setError("Failed to update profile");
+        setError("❌ Failed to update profile");
       }
     });
   };
 
   return (
-    <div style={{ minHeight: "100vh", padding: 20 }}>
+    <div style={{ minHeight: "100vh", padding: "20px 5px 20px 5px"}}>
       <div style={{ maxWidth: 600, margin: "40px auto", padding: 24 }}>
         <style jsx>{`
           .form-container {
@@ -241,7 +240,7 @@ export default function EditMyProfile() {
             box-shadow: 0 4px 16px rgba(108, 117, 125, 0.3);
           }
         `}</style>
-                 <Title>Edit My Profile</Title>
+                 <Title style={{ '--button-width': '180px' }}>Edit My Profile</Title>
         <div className="form-container">
           {/* Show changes indicator */}
           {hasChanges() ? (
@@ -262,17 +261,15 @@ export default function EditMyProfile() {
                 name="name"
                 value={form.name}
                 onChange={handleChange}
-                required
               />
             </div>
             <div className="form-group">
-              <label>Username (ID)</label>
+              <label>Username</label>
               <input
                 className="form-input"
                 name="id"
                 value={form.id}
                 onChange={handleChange}
-                required
               />
             </div>
             <div className="form-group">
@@ -291,7 +288,6 @@ export default function EditMyProfile() {
                   const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 11);
                   handleChange({ target: { name: 'phone', value } });
                 }}
-                required
               />
               <small style={{ color: '#6c757d', fontSize: '0.85rem', marginTop: '4px', display: 'block' }}>
                 Must be exactly 11 digits (e.g., 01234567890)
@@ -339,8 +335,8 @@ export default function EditMyProfile() {
               {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
         </button>
           </form>
-          {success && <div className="success-message">Profile updated successfully!</div>}
-          {error && <div className="error-message">{error}</div>}
+          {success && <div className="success-message">✅ Profile updated successfully!</div>}
+          {error && <div className="error-message">❌ {error}</div>}
         </div>
       </div>
     </div>

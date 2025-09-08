@@ -79,18 +79,7 @@ export default async function handler(req, res) {
     
     if (result.matchedCount === 0) return res.status(404).json({ error: 'Student not found' });
     
-    // Only update history record if student is currently attended
-    if (student.attended) {
-      await db.collection('history').updateOne(
-        { 
-          studentId: student_id
-        },
-        { 
-          $set: { message_state: !!message_state }
-        },
-        { sort: { _id: -1 } }
-      );
-    }
+    // Note: History data is now sourced directly from students collection
     
     res.json({ success: true });
   } catch (error) {

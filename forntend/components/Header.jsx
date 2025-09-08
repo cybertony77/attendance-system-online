@@ -81,7 +81,6 @@ export default function Header() {
           }
         }
         @media (max-width: 480px) {
-          ${isDashboard ? '.header { margin-bottom: -120px !important; }' : ''}
           span {
             font-size: 17px !important;
             letter-spacing: 0.5px !important;

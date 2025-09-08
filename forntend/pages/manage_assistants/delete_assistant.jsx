@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Title from "../../components/Title";
 import ContactDeveloper from "../../components/ContactDeveloper";
-import { useAssistant, useDeleteAssistant } from '../../lib/api/assistants';
+import { useAssistant, useAssistants, useDeleteAssistant } from '../../lib/api/assistants';
 
 function decodeJWT(token) {
   try {
@@ -19,9 +19,13 @@ export default function DeleteAssistant() {
   const [deleted, setDeleted] = useState(false);
   const [error, setError] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null); // Store current user info
+  const [searchResults, setSearchResults] = useState([]); // Store multiple search results
+  const [showSearchResults, setShowSearchResults] = useState(false); // Show/hide search results
 
   // React Query hooks
   const { data: assistant, isLoading: assistantLoading, error: assistantError } = useAssistant(searchId, { enabled: !!searchId });
+  const { data: allAssistants } = useAssistants(); // Get all assistants for name search
   const deleteAssistantMutation = useDeleteAssistant();
 
   useEffect(() => {
@@ -37,7 +41,10 @@ export default function DeleteAssistant() {
       console.log("🚫 Access denied: User is not admin, redirecting to dashboard");
       // Use window.location to avoid router conflicts
       window.location.href = "/dashboard";
+      return;
     }
+    // Store current user info for comparison
+    setCurrentUser(decoded);
   }, []);
 
   useEffect(() => {
@@ -50,26 +57,64 @@ export default function DeleteAssistant() {
   // Handle assistant error
   useEffect(() => {
     if (assistantError) {
-      setError("Assistant with this ID does not exist");
+      setError("❌ Assistant with this ID does not exist");
     }
   }, [assistantError]);
 
   const checkAssistant = async () => {
     if (!assistantId.trim()) {
-      setError("Please enter an assistant ID");
+      setError("❌ Please enter an assistant ID");
       return;
     }
     
+    const searchTerm = assistantId.trim();
+    
     // Check if trying to delete "tony" - prevent this
-    if (assistantId.toLowerCase() === "tony") {
-      setError("You can't Delete tony");
+    if (searchTerm.toLowerCase() === "tony") {
+      setError("❌ You can't Delete Tony");
+      return;
+    }
+    
+    // Check if trying to delete themselves
+    if (currentUser && searchTerm === currentUser.assistant_id) {
+      setError("⚠️ You are deleting yourself (" + currentUser.assistant_id + "). This action cannot be done. Please contact the developer (Tony Joseph) if you insist to delete yourself.");
       return;
     }
     
     setError("");
+    setSearchResults([]);
+    setShowSearchResults(false);
     
-    // Set the search ID to trigger the fetch
-    setSearchId(assistantId);
+    // Check if it's a numeric ID
+    if (/^\d+$/.test(searchTerm)) {
+      // It's a numeric ID, search directly
+      setSearchId(searchTerm);
+    } else {
+      // It's a name or username, search through all assistants (case-insensitive, includes)
+      if (allAssistants) {
+        const matchingAssistants = allAssistants.filter(assistant => 
+          (assistant.name && assistant.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (assistant.id && assistant.id.toLowerCase().includes(searchTerm.toLowerCase()))
+        );
+        
+        if (matchingAssistants.length === 1) {
+          // Single match, use it directly
+          const foundAssistant = matchingAssistants[0];
+          setSearchId(foundAssistant.id.toString());
+          setAssistantId(foundAssistant.id.toString());
+        } else if (matchingAssistants.length > 1) {
+          // Multiple matches, show selection
+          setSearchResults(matchingAssistants);
+          setShowSearchResults(true);
+          setError(`❌ Found ${matchingAssistants.length} assistants. Please select one.`);
+        } else {
+          setError(`❌ No assistant found with name or username starting with "${searchTerm}"`);
+          setSearchId("");
+        }
+      } else {
+        setError("❌ Assistant data not loaded. Please try again.");
+      }
+    }
   };
 
   const deleteAssistant = async () => {
@@ -77,7 +122,13 @@ export default function DeleteAssistant() {
     
     // Check if trying to delete "tony" - prevent this
     if (assistant.name && assistant.name.toLowerCase() === "tony") {
-      setError("You can't Delete tony");
+      setError("❌ You can't Delete Tony");
+      return;
+    }
+    
+    // Double-check if trying to delete themselves
+    if (currentUser && assistant.id === currentUser.assistant_id) {
+      setError("⚠️ You are deleting yourself (" + currentUser.assistant_id + "). This action cannot be done. Please contact the developer (Tony Joseph) if you insist to delete yourself.");
       return;
     }
     
@@ -89,21 +140,33 @@ export default function DeleteAssistant() {
         setShowConfirm(false); // Hide the modal after success
       },
       onError: () => {
-        setError("Error deleting assistant. Please try again.");
+        setError("❌ Error deleting assistant. Please try again.");
       }
     });
   };
 
   const resetForm = () => {
     setAssistantId("");
+    setSearchId(""); // Clear search ID to reset the query
     setError("");
     setDeleted(false);
+    setSearchResults([]);
+    setShowSearchResults(false);
+  };
+
+  // Handle assistant selection from search results
+  const handleAssistantSelect = (selectedAssistant) => {
+    setSearchId(selectedAssistant.id.toString());
+    setAssistantId(selectedAssistant.id.toString());
+    setSearchResults([]);
+    setShowSearchResults(false);
+    setError("");
   };
 
   return (
-    <div style={{ minHeight: "100vh", padding: "20px 5px 20px 5px" }}>
+    <div style={{ padding: "20px 5px 20px 5px" }}>
       <div style={{ maxWidth: 600, margin: "40px auto", padding: 24 }}>
-                 <Title backText="Back to Manage Assistants" href="/manage_assistants">Delete Assistant</Title>
+                 <Title backText="Back to Manage Assistants" href="/manage_assistants" style={{ '--button-width': '180px' }}>Delete Assistant</Title>
         <style jsx>{`
           .delete-btn {
             background: linear-gradient(90deg, #87CEEB 0%, #B0E0E6 100%);
@@ -357,18 +420,25 @@ export default function DeleteAssistant() {
           <>
             <div className="form-container">
               <form onSubmit={(e) => { e.preventDefault(); checkAssistant(); }} className="fetch-form">
-              <input
+                <input
                   className="fetch-input"
-                type="text"
-                value={assistantId}
-                onChange={(e) => {
-                  setAssistantId(e.target.value);
-                  setSearchId(""); // Clear search ID to prevent auto-fetch
-                }}
-                  placeholder="Enter assistant ID (e.g., admin)"
-                disabled={assistantLoading || deleteAssistantMutation.isPending}
+                  type="text"
+                  value={assistantId}
+                  onChange={(e) => {
+                    const newValue = e.target.value;
+                    setAssistantId(newValue);
+                    setSearchId(""); // Clear search ID to prevent auto-fetch
+                    // Clear search results and error if input changes
+                    if (newValue.trim() !== searchId) {
+                      setError("");
+                      setSearchResults([]);
+                      setShowSearchResults(false);
+                    }
+                  }}
+                  placeholder="Enter assistant Username, Name"
+                  disabled={assistantLoading || deleteAssistantMutation.isPending}
                   required
-              />
+                />
                 <button 
                   type="submit"
                   className="fetch-btn"
@@ -378,22 +448,85 @@ export default function DeleteAssistant() {
                 </button>
               </form>
               
+              {/* Show search results if multiple matches found */}
+              {showSearchResults && searchResults.length > 0 && (
+                <div style={{ 
+                  marginTop: "16px", 
+                  padding: "16px", 
+                  background: "#f8f9fa", 
+                  borderRadius: "8px", 
+                  border: "1px solid #dee2e6" 
+                }}>
+                  <div style={{ 
+                    marginBottom: "12px", 
+                    fontWeight: "600", 
+                    color: "#495057" 
+                  }}>
+                    Select an assistant to delete:
+                  </div>
+                  {searchResults.map((assistant) => (
+                    <button
+                      key={assistant.id}
+                      onClick={() => handleAssistantSelect(assistant)}
+                      style={{
+                        display: "block",
+                        width: "100%",
+                        padding: "12px 16px",
+                        margin: "8px 0",
+                        background: "white",
+                        border: "1px solid #dee2e6",
+                        borderRadius: "6px",
+                        textAlign: "left",
+                        cursor: "pointer",
+                        transition: "all 0.2s ease"
+                      }}
+                      onMouseEnter={(e) => {
+                        e.target.style.background = "#e9ecef";
+                        e.target.style.borderColor = "#dc3545";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.background = "white";
+                        e.target.style.borderColor = "#dee2e6";
+                      }}
+                    >
+                      <div style={{ fontWeight: "600", color: "#dc3545" }}>
+                        {assistant.name} (ID: {assistant.id})
+                      </div>
+                      <div style={{ fontSize: "0.9rem", color: "#6c757d" }}>
+                        {assistant.role} • {assistant.phone}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+              
             {error && (
-              <div className="error-message">{error}</div>
+              <div className="error-message">
+                {error.includes("You are deleting yourself") ? (
+                  <>
+                    {error}
+                    <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
+                      <ContactDeveloper />
+                    </div>
+                  </>
+                ) : (
+                  error
+                )}
+              </div>
             )}
             </div>
             {assistant && (
               <div className="assistant-info">
                 <h3>Assistant Found:</h3>
-                <p><strong>ID:</strong> {assistant.id}</p>
+                <p><strong>Username:</strong> {assistant.id}</p>
                 <p><strong>Name:</strong> {assistant.name}</p>
                 <p><strong>Phone:</strong> {assistant.phone}</p>
                 <p><strong>Role:</strong> {assistant.role}</p>
                 <div style={{ marginTop: "20px" }}>
-                  {assistant.id === 'admin' ? (
+                  {(currentUser && assistant.id === currentUser.assistant_id) ? (
                     <>
                       <p style={{ color: "#dc3545", fontWeight: "bold", marginBottom: "16px" }}>
-                        ⚠️ You are deleting yourself (admin). This action cannot be done. Please contact the developer (Tony Joseph) if you insist to delete yourself.
+                        ⚠️ You are deleting yourself ({currentUser.assistant_id}). This action cannot be done. Please contact the developer (Tony Joseph) if you insist to delete yourself.
                       </p>
                       <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
                         <ContactDeveloper />
@@ -416,7 +549,7 @@ export default function DeleteAssistant() {
                 </div>
               </div>
             )}
-            {showConfirm && assistant && assistant.id !== 'admin' && (
+            {showConfirm && assistant && !(currentUser && assistant.id === currentUser.assistant_id) && (
               <div className="confirm-modal">
                 <div className="confirm-content">
                   <h3>Confirm Delete</h3>

@@ -1,0 +1,31 @@
+{
+  "name": "TopPhysics Attendance System",
+  "short_name": "TopPhysics",
+  "description": "Attendance management system for TopPhysics learning centers",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "fullscreen"],
+  "background_color": "#1FA8DC",
+  "theme_color": "#1FA8DC",
+  "orientation": "portrait-primary",
+  "id": "/",
+  "categories": ["education", "productivity"],
+  "lang": "en",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "/icons/manifest-icon-192.maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/manifest-icon-512.maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "prefer_related_applications": false
+}

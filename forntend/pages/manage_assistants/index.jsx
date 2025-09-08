@@ -39,7 +39,7 @@ export default function ManageAssistants() {
       minHeight: '100vh'
     }}>
       <div style={{ flex: 1 }}>
-        <div style={{ maxWidth: 600, margin: '100px auto', textAlign: 'center' }}>
+        <div className="main-container" style={{ maxWidth: 600, margin: '100px auto', textAlign: 'center' }}>
           <div style={{
             display: 'flex',
             flexDirection: 'column',
@@ -115,6 +115,24 @@ export default function ManageAssistants() {
             .dashboard-btn:hover {
               background: linear-gradient(90deg, #5F9EA0 0%, #87CEEB 100%);
               transform: translateY(-2px) scale(1.03);
+            }
+            
+            .main-container {
+              max-width: 380px;
+              margin: 100px auto;
+              text-align: center;
+            }
+            
+            @media (max-width: 768px) {
+              .main-container {
+                max-width: 450px !important;
+              }
+            }
+            
+            @media (max-width: 480px) {
+              .main-container {
+                max-width: 380px !important;
+              }
             }
           `}</style>
           <button

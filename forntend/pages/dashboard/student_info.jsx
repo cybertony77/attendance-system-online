@@ -4,7 +4,7 @@ import Title from "../../components/Title";
 import { Table, ScrollArea } from '@mantine/core';
 import { weeks } from "../../constants/weeks";
 import styles from '../../styles/TableScrollArea.module.css';
-import { useStudent } from '../../lib/api/students';
+import { useStudents, useStudent } from '../../lib/api/students';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 
 export default function StudentInfo() {
@@ -13,8 +13,13 @@ export default function StudentInfo() {
   const [searchId, setSearchId] = useState(""); // Separate state for search
   const [error, setError] = useState("");
   const [studentDeleted, setStudentDeleted] = useState(false);
+  const [searchResults, setSearchResults] = useState([]); // Store multiple search results
+  const [showSearchResults, setShowSearchResults] = useState(false); // Show/hide search results
   const router = useRouter();
 
+  // Get all students for name-based search
+  const { data: allStudents } = useStudents();
+  
   // React Query hook with real-time updates - 5 second polling
   const { data: student, isLoading: studentLoading, error: studentError, refetch: refetchStudent, isRefetching, dataUpdatedAt } = useStudent(searchId, { 
     enabled: !!searchId,
@@ -95,11 +100,44 @@ export default function StudentInfo() {
 
   const handleIdSubmit = async (e) => {
     e.preventDefault();
+    if (!studentId.trim()) return;
+    
     setError("");
     setStudentDeleted(false); // Reset deletion state for new search
+    setSearchResults([]);
+    setShowSearchResults(false);
     
-    // Set the search ID to trigger the fetch
-    setSearchId(studentId);
+    const searchTerm = studentId.trim();
+    
+    // Check if it's a numeric ID
+    if (/^\d+$/.test(searchTerm)) {
+      // It's a numeric ID, search directly
+      setSearchId(searchTerm);
+    } else {
+      // It's a name, search through all students (case-insensitive, includes)
+      if (allStudents) {
+        const matchingStudents = allStudents.filter(student => 
+          student.name.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        
+        if (matchingStudents.length === 1) {
+          // Single match, use it directly
+          const foundStudent = matchingStudents[0];
+          setSearchId(foundStudent.id.toString());
+          setStudentId(foundStudent.id.toString());
+        } else if (matchingStudents.length > 1) {
+          // Multiple matches, show selection
+          setSearchResults(matchingStudents);
+          setShowSearchResults(true);
+          setError(`Found ${matchingStudents.length} students. Please select one.`);
+        } else {
+          setError(`No student found with name starting with "${searchTerm}"`);
+          setSearchId("");
+        }
+      } else {
+        setError("Student data not loaded. Please try again.");
+      }
+    }
   };
 
   // Clear student data when ID input is emptied
@@ -110,27 +148,39 @@ export default function StudentInfo() {
     if (!value.trim()) {
       setError("");
       setStudentDeleted(false); // Reset deletion state when clearing input
+      setSearchResults([]);
+      setShowSearchResults(false);
     }
+  };
+
+  // Handle student selection from search results
+  const handleStudentSelect = (selectedStudent) => {
+    setSearchId(selectedStudent.id.toString());
+    setStudentId(selectedStudent.id.toString());
+    setSearchResults([]);
+    setShowSearchResults(false);
+    setError("");
   };
 
   // Helper function to get attendance status for a week
   const getWeekAttendance = (weekNumber) => {
-    if (!student || !student.weeks) return { attended: false, hwDone: false, paidSession: false, quizDegree: null };
+    if (!student || !student.weeks) return { attended: false, hwDone: false, paidSession: false, quizDegree: null, message_state: false, lastAttendance: null };
     
     const weekData = student.weeks.find(w => w.week === weekNumber);
-    if (!weekData) return { attended: false, hwDone: false, paidSession: false, quizDegree: null };
+    if (!weekData) return { attended: false, hwDone: false, paidSession: false, quizDegree: null, message_state: false, lastAttendance: null };
     
     return {
       attended: weekData.attended || false,
       hwDone: weekData.hwDone || false,
       paidSession: weekData.paidSession || false,
-      quizDegree: weekData.quizDegree || null
+      quizDegree: weekData.quizDegree || null,
+      message_state: weekData.message_state || false,
+      lastAttendance: weekData.lastAttendance || null
     };
   };
 
   return (
     <div style={{ 
-      minHeight: "100vh",
       padding: "20px 5px 20px 5px"
     }}>
       <div ref={containerRef} style={{ maxWidth: 600, margin: "40px auto", padding: 24 }}>
@@ -305,7 +355,7 @@ export default function StudentInfo() {
             <input
               className="fetch-input"
               type="text"
-              placeholder="Enter student ID (e.g., 1)"
+              placeholder="Enter student ID or Name"
               value={studentId}
               onChange={handleIdChange}
               required
@@ -314,6 +364,58 @@ export default function StudentInfo() {
               {studentLoading ? "Loading..." : "🔍 Search"}
         </button>
           </form>
+          
+          {/* Show search results if multiple matches found */}
+          {showSearchResults && searchResults.length > 0 && (
+            <div style={{ 
+              marginTop: "16px", 
+              padding: "16px", 
+              background: "#f8f9fa", 
+              borderRadius: "8px", 
+              border: "1px solid #dee2e6" 
+            }}>
+              <div style={{ 
+                marginBottom: "12px", 
+                fontWeight: "600", 
+                color: "#495057" 
+              }}>
+                Select a student:
+              </div>
+              {searchResults.map((student) => (
+                <button
+                  key={student.id}
+                  onClick={() => handleStudentSelect(student)}
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    padding: "12px 16px",
+                    margin: "8px 0",
+                    background: "white",
+                    border: "1px solid #dee2e6",
+                    borderRadius: "6px",
+                    textAlign: "left",
+                    cursor: "pointer",
+                    transition: "all 0.2s ease"
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = "#e9ecef";
+                    e.target.style.borderColor = "#1FA8DC";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = "white";
+                    e.target.style.borderColor = "#dee2e6";
+                  }}
+                >
+                  <div style={{ fontWeight: "600", color: "#1FA8DC" }}>
+                    {student.name} (ID: {student.id})
+                  </div>
+                  <div style={{ fontSize: "0.9rem", color: "#6c757d" }}>
+                    {student.grade} • {student.main_center}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         
         {student && !studentDeleted && (
@@ -323,10 +425,12 @@ export default function StudentInfo() {
                 <div className="detail-label">Full Name</div>
                 <div className="detail-value">{student.name}</div>
               </div>
-              <div className="detail-item">
-                <div className="detail-label">Age</div>
-                <div className="detail-value">{student.age || 'N/A'}</div>
-              </div>
+              {student.age && (
+                <div className="detail-item">
+                  <div className="detail-label">Age</div>
+                  <div className="detail-value">{student.age}</div>
+                </div>
+              )}
               <div className="detail-item">
                 <div className="detail-label">Grade</div>
                 <div className="detail-value">{student.grade}</div>
@@ -351,7 +455,7 @@ export default function StudentInfo() {
             
             <div className="weeks-title">Attendance Records - All Weeks</div>
             <ScrollArea h={400} type="hover" className={styles.scrolled}>
-              <Table striped highlightOnHover withTableBorder withColumnBorders style={{ minWidth: '800px' }}>
+              <Table striped highlightOnHover withTableBorder withColumnBorders style={{ minWidth: '950px' }}>
                 <Table.Thead style={{ position: 'sticky', top: 0, backgroundColor: '#f8f9fa', zIndex: 10 }}>
                   <Table.Tr>
                     <Table.Th style={{ width: '120px', minWidth: '120px', textAlign: 'center' }}>Week</Table.Th>
@@ -359,6 +463,7 @@ export default function StudentInfo() {
                     <Table.Th style={{ width: '120px', minWidth: '120px', textAlign: 'center' }}>Homework</Table.Th>
                     <Table.Th style={{ width: '120px', minWidth: '120px', textAlign: 'center' }}>Payment</Table.Th>
                     <Table.Th style={{ width: '120px', minWidth: '120px', textAlign: 'center' }}>Quiz Degree</Table.Th>
+                    <Table.Th style={{ width: '130px', minWidth: '130px', textAlign: 'center' }}>Message Status</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
@@ -373,11 +478,11 @@ export default function StudentInfo() {
                         </Table.Td>
                         <Table.Td style={{ width: '120px', minWidth: '120px', textAlign: 'center' }}>
                           <span style={{ 
-                            color: weekData.attended ? '#28a745' : '#dc3545',
+                            color: weekData.attended ? (weekData.lastAttendance ? '#212529' : '#28a745') : '#dc3545',
                             fontWeight: 'bold',
                             fontSize: '1rem'
                           }}>
-                            {weekData.attended ? '✅ Yes' : '❌ No'}
+                            {weekData.attended ? (weekData.lastAttendance || '✅ Yes') : '❌ No'}
                           </span>
                         </Table.Td>
                         <Table.Td style={{ width: '120px', minWidth: '120px', textAlign: 'center' }}>
@@ -405,6 +510,15 @@ export default function StudentInfo() {
                             color: weekData.quizDegree !== null ? '#1FA8DC' : '#6c757d'
                           }}>
                             {weekData.quizDegree !== null ? weekData.quizDegree : '0/0'}
+                          </span>
+                        </Table.Td>
+                        <Table.Td style={{ width: '130px', minWidth: '130px', textAlign: 'center' }}>
+                          <span style={{ 
+                            color: weekData.message_state ? '#28a745' : '#dc3545',
+                            fontWeight: 'bold',
+                            fontSize: '1rem'
+                          }}>
+                            {weekData.message_state ? '✅ Sent' : '❌ Not Sent'}
                           </span>
                         </Table.Td>
                       </Table.Tr>

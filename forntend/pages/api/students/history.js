@@ -64,40 +64,72 @@ export default async function handler(req, res) {
     // Verify authentication
     const user = await authMiddleware(req);
     
-    // Get history data
+    // Get history records (only studentId and week)
     const historyRecords = await db.collection('history').find().toArray();
+    console.log('📊 Found', historyRecords.length, 'history records');
     
-    // Get current student data to include updated student info
-    const currentStudents = await db.collection('students').find().toArray();
+    // Get all students data
+    const students = await db.collection('students').find().toArray();
+    console.log('👥 Found', students.length, 'students');
+    
+    // Create a map of students by ID for quick lookup
     const studentMap = new Map();
-    
-    // Create a map of current student data by ID
-    const currentStudentMap = new Map();
-    currentStudents.forEach(student => {
-      currentStudentMap.set(student.id, student);
+    students.forEach(student => {
+      studentMap.set(student.id, student);
     });
     
+    const studentHistoryMap = new Map();
+    
+    // Process each history record
     historyRecords.forEach(record => {
-      if (!studentMap.has(record.studentId)) {
-        const currentStudent = currentStudentMap.get(record.studentId);
-        if (currentStudent) {
-          studentMap.set(record.studentId, {
-            id: record.studentId,
-            name: currentStudent.name,
-            grade: currentStudent.grade,
-            school: currentStudent.school,
-            phone: currentStudent.phone,
-            parentsPhone: currentStudent.parentsPhone,
-            historyRecords: []
-          });
-        }
+      const student = studentMap.get(record.studentId);
+      if (!student) {
+        console.warn(`Student ${record.studentId} not found for history record`);
+        return;
       }
-      studentMap.get(record.studentId).historyRecords.push(record);
+      
+      // Get the specific week data from student's weeks array
+      const weekIndex = record.week - 1; // Convert week number to array index
+      const weekData = student.weeks && student.weeks[weekIndex] ? student.weeks[weekIndex] : null;
+      
+      if (!weekData || !weekData.attended) {
+        console.warn(`Week ${record.week} data not found or student not attended for student ${record.studentId}`);
+        return;
+      }
+      
+      // Create enriched history record with student data
+      const enrichedRecord = {
+        studentId: record.studentId,
+        week: record.week,
+        main_center: student.main_center || 'n/a',
+        center: weekData.lastAttendanceCenter || 'n/a',
+        attendanceDate: weekData.lastAttendance || 'n/a',
+        hwDone: weekData.hwDone || false,
+        paidSession: weekData.paidSession || false,
+        quizDegree: weekData.quizDegree || null,
+        message_state: weekData.message_state || false
+      };
+      
+      // Group by student
+      if (!studentHistoryMap.has(record.studentId)) {
+        studentHistoryMap.set(record.studentId, {
+          id: student.id,
+          name: student.name,
+          grade: student.grade,
+          school: student.school,
+          phone: student.phone,
+          parentsPhone: student.parentsPhone,
+          historyRecords: []
+        });
+      }
+      
+      studentHistoryMap.get(record.studentId).historyRecords.push(enrichedRecord);
     });
     
-    // Convert map to array and sort by ID
-    const result = Array.from(studentMap.values()).sort((a, b) => a.id - b.id);
+    // Convert map to array and sort by student ID
+    const result = Array.from(studentHistoryMap.values()).sort((a, b) => a.id - b.id);
     
+    console.log('📈 Returning history for', result.length, 'students with attendance records');
     res.json(result);
   } catch (error) {
     if (error.message.includes('Unauthorized') || error.message.includes('Invalid token')) {

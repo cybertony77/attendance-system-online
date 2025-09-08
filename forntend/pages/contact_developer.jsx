@@ -1,13 +1,21 @@
 import Image from "next/image";
 import { useRouter } from "next/router";
+import { useState, useEffect } from "react";
+import Title from "../components/Title";
 
 export default function ContactDeveloperPage() {
   const router = useRouter();
+  const [hasToken, setHasToken] = useState(false);
+
+  useEffect(() => {
+    const token = sessionStorage.getItem("token");
+    setHasToken(!!token);
+  }, []);
 
   return (
     <div style={{ 
       minHeight: "100vh", 
-      padding: "20px 5px 20px 5px",
+      padding: "20px",
       position: "relative",
       overflow: "hidden"
     }}>
@@ -51,6 +59,9 @@ export default function ContactDeveloperPage() {
         position: "relative",
         zIndex: 2
       }}>
+        {/* Show Title component only if user has token */}
+        {hasToken && <Title backText="Back" href={null}>Contact Developer</Title>}
+        
         <div style={{
           background: "rgba(255, 255, 255, 0.98)",
           backdropFilter: "blur(20px)",
@@ -349,6 +360,37 @@ export default function ContactDeveloperPage() {
               </div>
             </div>
 
+            {/* WhatsApp Section */}
+            <div className="contact-item">
+              <div className="contact-icon" style={{
+                background: "linear-gradient(135deg, #25d366 0%, #0ee8cf 100%)",
+                color: "white"
+              }}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488"/>
+                </svg>
+              </div>
+              <h3 style={{ 
+                color: "#25d366", 
+                fontWeight: 800, 
+                marginBottom: 16, 
+                fontSize: "1.4rem" 
+              }}>
+                WhatsApp
+              </h3>
+              <div>
+                <a 
+                  href="https://wa.me/201211172756?text=Hello%20Tony,%20I%20need%20help%20in%20TopPhysics%20Attendance%20System" 
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="contact-link"
+                  style={{ color: "#25d366" }}
+                >
+                  📱 Message me on WhatsApp
+                </a>
+              </div>
+            </div>
+              
             {/* Email Section */}
             <div className="contact-item">
               <div className="contact-icon email-icon">
@@ -396,73 +438,80 @@ export default function ContactDeveloperPage() {
             marginTop: "24px",
             flexDirection: "column"
           }}>
-            {/* Login Button */}
-            <button 
-              onClick={() => router.push('/')}
-              style={{
-                width: "100%",
-                background: "linear-gradient(135deg, #28a745 0%, #20c997 100%)",
-                border: "none",
-                borderRadius: "16px",
-                height: "50px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-                boxShadow: "0 4px 16px rgba(40, 167, 69, 0.3)",
-                transition: "all 0.3s ease",
-                fontSize: "1.1rem",
-                color: "white",
-                fontWeight: "600",
-                position: "relative",
-                overflow: "hidden"
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.transform = "translateY(-2px)";
-                e.target.style.boxShadow = "0 6px 20px rgba(40, 167, 69, 0.4)";
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.transform = "translateY(0)";
-                e.target.style.boxShadow = "0 4px 16px rgba(40, 167, 69, 0.3)";
-              }}
-            >
-              <span style={{ marginRight: "8px" }}>🔐</span>
-              Go to Login
-            </button>
+            {/* Show Login and Go Back buttons only if user doesn't have token */}
+            {!hasToken && (
+              <>
+                {/* Login Button */}
+                <button 
+                  onClick={() => router.push('/')}
+                  style={{
+                    width: "100%",
+                    background: "linear-gradient(135deg, #28a745 0%, #20c997 100%)",
+                    border: "none",
+                    borderRadius: "16px",
+                    height: "50px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    boxShadow: "0 4px 16px rgba(40, 167, 69, 0.3)",
+                    transition: "all 0.3s ease",
+                    fontSize: "1.1rem",
+                    color: "white",
+                    fontWeight: "600",
+                    position: "relative",
+                    overflow: "hidden"
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.transform = "translateY(-2px)";
+                    e.target.style.boxShadow = "0 6px 20px rgba(40, 167, 69, 0.4)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.transform = "translateY(0)";
+                    e.target.style.boxShadow = "0 4px 16px rgba(40, 167, 69, 0.3)";
+                  }}
+                >
+                  <span style={{ marginRight: "8px" }}>🔐</span>
+                  Go to Login
+                </button>
 
-            {/* Back Button */}
-            <button 
-              onClick={() => router.back()}
-              style={{
-                width: "100%",
-                background: "linear-gradient(135deg, #1FA8DC 0%, #87CEEB 100%)",
-                border: "none",
-                borderRadius: "16px",
-                height: "50px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-                boxShadow: "0 4px 16px rgba(31, 168, 220, 0.3)",
-                transition: "all 0.3s ease",
-                fontSize: "1.1rem",
-                color: "white",
-                fontWeight: "600",
-                position: "relative",
-                overflow: "hidden"
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.transform = "translateY(-2px)";
-                e.target.style.boxShadow = "0 6px 20px rgba(31, 168, 220, 0.4)";
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.transform = "translateY(0)";
-                e.target.style.boxShadow = "0 4px 16px rgba(31, 168, 220, 0.3)";
-              }}
-            >
-              <span style={{ marginRight: "8px" }}>⬅️</span>
-              Go Back
-            </button>
+                {/* Back Button */}
+                <button 
+                  onClick={() => router.back()}
+                  style={{
+                    width: "100%",
+                    background: "linear-gradient(135deg, #1FA8DC 0%, #87CEEB 100%)",
+                    border: "none",
+                    borderRadius: "16px",
+                    height: "50px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    boxShadow: "0 4px 16px rgba(31, 168, 220, 0.3)",
+                    transition: "all 0.3s ease",
+                    fontSize: "1.1rem",
+                    color: "white",
+                    fontWeight: "600",
+                    position: "relative",
+                    overflow: "hidden"
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.transform = "translateY(-2px)";
+                    e.target.style.boxShadow = "0 6px 20px rgba(31, 168, 220, 0.4)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.transform = "translateY(0)";
+                    e.target.style.boxShadow = "0 4px 16px rgba(31, 168, 220, 0.3)";
+                  }}
+                >
+                  <span style={{ marginRight: "8px" }}>⬅️</span>
+                  Go Back
+                </button>
+              </>
+            )}
+
+
           </div>
         </div>
       </div>

@@ -12,6 +12,8 @@ import axios from "axios";
 import Image from "next/image";
 import ErrorBoundary from "../components/ErrorBoundary";
 
+// PWA Service Worker Registration handled by next-pwa
+
 // Preloader Component
 function Preloader() {
   return (
@@ -250,7 +252,7 @@ export default function App({ Component, pageProps }) {
     };
 
     checkAuth();
-  }, [router.pathname, adminPages]);
+  }, [router.pathname, adminPages, router]);
 
   // Handle route changes for main preloader
   useEffect(() => {
@@ -294,7 +296,7 @@ export default function App({ Component, pageProps }) {
         router.push("/");
       }, 1000); // Show preloader for 1 second
     }
-  }, [isLoading, isAuthenticated, router.pathname, publicPages]);
+  }, [isLoading, isAuthenticated, router.pathname, publicPages, router]);
 
   // Check admin access for current route
   useEffect(() => {
@@ -328,7 +330,7 @@ export default function App({ Component, pageProps }) {
     if (isAuthenticated && adminPages.includes(router.pathname)) {
       checkAdminAccess();
     }
-  }, [router.pathname, isAuthenticated, adminPages]);
+  }, [router.pathname, isAuthenticated, adminPages, router]);
 
   // Reset Access Denied state when authentication changes
   useEffect(() => {
@@ -415,7 +417,11 @@ export default function App({ Component, pageProps }) {
     <QueryClientProvider client={queryClient}>
       <ErrorBoundary>
         <MantineProvider>
-          <div style={{ position: 'relative', minHeight: '100vh' }}>
+          <div className="page-container" style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            minHeight: '100vh' 
+          }}>
             <Header />
             
             {/* Session Expiry Warning */}
@@ -436,7 +442,9 @@ export default function App({ Component, pageProps }) {
               </div>
             )}
             
-            <Component {...pageProps} />
+            <div className="content" style={{ flex: 1 }}>
+              <Component {...pageProps} />
+            </div>
             <Footer />
           </div>
           <ReactQueryDevtools initialIsOpen={false} />

@@ -15,7 +15,7 @@ export default function Custom404() {
       flexDirection: "column",
       alignItems: "center",
       justifyContent: "center",
-      padding: "20px 5px 20px 5px",
+      padding: "20px",
       position: "relative",
       overflow: "hidden"
     }}>
@@ -88,7 +88,7 @@ export default function Custom404() {
           }
           
           .logo-container {
-            margin-bottom: 40px;
+            margin-bottom: 10px;
             animation: slideInUp 0.8s ease-out;
           }
           

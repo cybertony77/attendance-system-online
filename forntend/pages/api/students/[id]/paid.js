@@ -84,21 +84,6 @@ export default async function handler(req, res) {
     
     if (result.matchedCount === 0) return res.status(404).json({ error: 'Student not found' });
     
-    // Only update history record if student is currently attended for this week
-    const currentWeek = student.weeks ? student.weeks[weekIndex] : null;
-    if (currentWeek && currentWeek.attended) {
-      await db.collection('history').updateOne(
-        { 
-          studentId: student_id,
-          week: weekNumber
-        },
-        { 
-          $set: { paidSession: !!paidSession }
-        },
-        { sort: { _id: -1 } }
-      );
-    }
-    
     res.json({ success: true });
   } catch (error) {
     if (error.message.includes('Unauthorized') || error.message.includes('Invalid token')) {

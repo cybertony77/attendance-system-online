@@ -76,11 +76,8 @@ const WhatsAppButton = ({ student, onMessageSent }) => {
 
       // Create the message using the specified format
       let whatsappMessage = `TopPhysics academy:
+Dear Parent, ${student.name}
 
-  • Name: ${student.name}
-  • Age: ${student.age || 'N/A'}
-  • Grade: ${student.grade || 'N/A'}
-  • School: ${student.school || 'N/A'}
   • Week: ${student.currentWeekNumber || 1}
   • Attended: ${currentWeek.attended ? `${currentWeek.lastAttendance}` : 'No'}`;
 
@@ -94,7 +91,8 @@ const WhatsAppButton = ({ student, onMessageSent }) => {
 
       whatsappMessage += `
 
-Thanks for choosing us 😊❤`;
+Thanks for choosing us 😊❤
+– Eng. Mina Narouz & Team`;
 
       // Create WhatsApp URL with the formatted message
       const whatsappUrl = `https://wa.me/${parentNumber}?text=${encodeURIComponent(whatsappMessage)}`;

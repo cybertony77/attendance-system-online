@@ -4,7 +4,7 @@ import CenterSelect from "../../components/CenterSelect";
 import BackToDashboard from "../../components/BackToDashboard";
 import GradeSelect from '../../components/GradeSelect';
 import Title from '../../components/Title';
-import { useStudent, useUpdateStudent } from '../../lib/api/students';
+import { useStudents, useStudent, useUpdateStudent } from '../../lib/api/students';
 
 // Helper to normalize grade values to match select options
 function normalizeGrade(grade) {
@@ -25,8 +25,11 @@ export default function EditStudent() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [openDropdown, setOpenDropdown] = useState(null); // 'grade', 'center', or null
+  const [searchResults, setSearchResults] = useState([]); // Store multiple search results
+  const [showSearchResults, setShowSearchResults] = useState(false); // Show/hide search results
 
   // React Query hooks
+  const { data: allStudents } = useStudents();
   const { data: student, isLoading: studentLoading, error: studentError } = useStudent(searchId, { enabled: !!searchId });
   const updateStudentMutation = useUpdateStudent();
   useEffect(() => {
@@ -102,12 +105,45 @@ export default function EditStudent() {
 
   const handleIdSubmit = async (e) => {
     e.preventDefault();
+    if (!studentId.trim()) return;
+    
     setError("");
     setSuccess(false);
     setOriginalStudent(null);
+    setSearchResults([]);
+    setShowSearchResults(false);
     
-    // Set the search ID to trigger the fetch
-    setSearchId(studentId);
+    const searchTerm = studentId.trim();
+    
+    // Check if it's a numeric ID
+    if (/^\d+$/.test(searchTerm)) {
+      // It's a numeric ID, search directly
+      setSearchId(searchTerm);
+    } else {
+      // It's a name, search through all students (case-insensitive, includes)
+      if (allStudents) {
+        const matchingStudents = allStudents.filter(student => 
+          student.name.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        
+        if (matchingStudents.length === 1) {
+          // Single match, use it directly
+          const foundStudent = matchingStudents[0];
+          setSearchId(foundStudent.id.toString());
+          setStudentId(foundStudent.id.toString());
+        } else if (matchingStudents.length > 1) {
+          // Multiple matches, show selection
+          setSearchResults(matchingStudents);
+          setShowSearchResults(true);
+          setError(`Found ${matchingStudents.length} students. Please select one.`);
+        } else {
+          setError(`No student found with name starting with "${searchTerm}"`);
+          setSearchId("");
+        }
+      } else {
+        setError("Student data not loaded. Please try again.");
+      }
+    }
   };
 
   // Clear student data when ID input is emptied
@@ -120,7 +156,18 @@ export default function EditStudent() {
       setOriginalStudent(null);
       setError("");
       setSuccess(false);
+      setSearchResults([]);
+      setShowSearchResults(false);
     }
+  };
+
+  // Handle student selection from search results
+  const handleStudentSelect = (selectedStudent) => {
+    setSearchId(selectedStudent.id.toString());
+    setStudentId(selectedStudent.id.toString());
+    setSearchResults([]);
+    setShowSearchResults(false);
+    setError("");
   };
 
   const handleChange = (e) => {
@@ -183,6 +230,15 @@ export default function EditStudent() {
       changedFields.parents_phone = parentPhone; // Keep as string to preserve leading zeros exactly
     }
     
+    // Check if student phone number is the same as parent phone number
+    const currentStudentPhone = changedFields.phone || originalStudent.phone;
+    const currentParentPhone = changedFields.parents_phone || originalStudent.parents_phone;
+    
+    if (currentStudentPhone === currentParentPhone) {
+      setError("Student phone number cannot be the same as parent phone number");
+      return;
+    }
+    
     // Debug logging
     console.log('🔍 Original student data:', originalStudent);
     console.log('✏️ Current form data:', formData);
@@ -202,7 +258,7 @@ export default function EditStudent() {
     console.log('🚀 Final payload being sent:', updatedStudent);
     
     updateStudentMutation.mutate(
-      { id: studentId, updateData: updatedStudent },
+      { id: searchId, updateData: updatedStudent },
       {
         onSuccess: () => {
           setSuccess(true);
@@ -483,19 +539,71 @@ export default function EditStudent() {
       <Title>Edit Student</Title>
 
       <div className="form-container">
+        
         <form onSubmit={handleIdSubmit} className="fetch-form">
           <input
             className="fetch-input"
             type="text"
-            placeholder="Enter student ID (e.g., 1)"
+            placeholder="Enter student ID or Name"
             value={studentId}
             onChange={handleIdChange}
-            required
           />
-                          <button type="submit" className="fetch-btn" disabled={studentLoading}>
-                  {studentLoading ? "Loading..." : "🔍 Search"}
-                </button>
+          <button type="submit" className="fetch-btn" disabled={studentLoading}>
+            {studentLoading ? "Loading..." : "🔍 Search"}
+          </button>
         </form>
+        
+        {/* Show search results if multiple matches found */}
+        {showSearchResults && searchResults.length > 0 && (
+          <div style={{ 
+            marginTop: "16px", 
+            padding: "16px", 
+            background: "#f8f9fa", 
+            borderRadius: "8px", 
+            border: "1px solid #dee2e6" 
+          }}>
+            <div style={{ 
+              marginBottom: "12px", 
+              fontWeight: "600", 
+              color: "#495057" 
+            }}>
+              Select a student:
+            </div>
+            {searchResults.map((student) => (
+              <button
+                key={student.id}
+                onClick={() => handleStudentSelect(student)}
+                style={{
+                  display: "block",
+                  width: "100%",
+                  padding: "12px 16px",
+                  margin: "8px 0",
+                  background: "white",
+                  border: "1px solid #dee2e6",
+                  borderRadius: "6px",
+                  textAlign: "left",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease"
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.background = "#e9ecef";
+                  e.target.style.borderColor = "#1FA8DC";
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = "white";
+                  e.target.style.borderColor = "#dee2e6";
+                }}
+              >
+                <div style={{ fontWeight: "600", color: "#1FA8DC" }}>
+                  {student.name} (ID: {student.id})
+                </div>
+                <div style={{ fontSize: "0.9rem", color: "#6c757d" }}>
+                  {student.grade} • {student.main_center}
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       
       {student && (
@@ -513,19 +621,18 @@ export default function EditStudent() {
           
           <form onSubmit={handleEdit}>
             <div className="form-group">
-              <label>Full Name <span style={{color: 'red'}}>*</span></label>
+              <label>Full Name</label>
               <input
                 className="form-input"
                 name="name"
                 placeholder="Enter student's full name"
                 value={formData.name || ''}
                 onChange={handleChange}
-                required
                 autocomplete="off"
               />
             </div>
             <div className="form-group">
-              <label>Age <span style={{color: 'red'}}>*</span></label>
+              <label>Age</label>
               <input
                 className="form-input"
                 name="age"
@@ -535,37 +642,34 @@ export default function EditStudent() {
                 placeholder="Enter student's age"
                 value={formData.age || ''}
                 onChange={handleChange}
-                required
               />
             </div>
             <div className="form-row">
               <div className="form-group">
-                <label>Grade <span style={{color: 'red'}}>*</span></label>
+                <label>Grade</label>
                 <GradeSelect 
                   selectedGrade={formData.grade || ''} 
                   onGradeChange={(grade) => handleChange({ target: { name: 'grade', value: grade } })} 
-                  required 
                   isOpen={openDropdown === 'grade'}
                   onToggle={() => setOpenDropdown(openDropdown === 'grade' ? null : 'grade')}
                   onClose={() => setOpenDropdown(null)}
                 />
               </div>
               <div className="form-group">
-                <label>School <span style={{color: 'red'}}>*</span></label>
+                <label>School</label>
                 <input
                   className="form-input"
                   name="school"
                   placeholder="Enter student's school"
                   value={formData.school || ''}
                   onChange={handleChange}
-                  required
                   autocomplete="off"
                 />
               </div>
             </div>
             <div className="form-row">
               <div className="form-group">
-                <label>Student Phone <span style={{color: 'red'}}>*</span></label>
+                <label>Student Phone</label>
                 <input
                   className="form-input"
                   name="phone"
@@ -580,7 +684,6 @@ export default function EditStudent() {
                     const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 11);
                     handleChange({ target: { name: 'phone', value } });
                   }}
-                  required
                   autocomplete="off"
                 />
                 <small style={{ color: '#6c757d', fontSize: '0.85rem', marginTop: '4px', display: 'block' }}>
@@ -588,7 +691,7 @@ export default function EditStudent() {
                 </small>
               </div>
               <div className="form-group">
-                <label>Parent's Phone <span style={{color: 'red'}}>*</span></label>
+                <label>Parent's Phone</label>
                 <input
                   className="form-input"
                   name="parents_phone"
@@ -603,7 +706,7 @@ export default function EditStudent() {
                     const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 11);
                     handleChange({ target: { name: 'parents_phone', value } });
                   }}
-                  required
+
                   autocomplete="off"
                 />
                 <small style={{ color: '#6c757d', fontSize: '0.85rem', marginTop: '4px', display: 'block' }}>
@@ -612,11 +715,10 @@ export default function EditStudent() {
               </div>
             </div>
             <div className="form-group" style={{ width: '100%' }}>
-              <label>Main Center <span style={{color: 'red'}}>*</span></label>
+              <label>Main Center</label>
               <CenterSelect 
                 selectedCenter={formData.main_center || ''} 
                 onCenterChange={(center) => handleChange({ target: { name: 'main_center', value: center } })} 
-                required 
                 style={{ width: '100%' }}
                 isOpen={openDropdown === 'center'}
                 onToggle={() => setOpenDropdown(openDropdown === 'center' ? null : 'center')}
